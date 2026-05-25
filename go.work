@@ -6,6 +6,7 @@ use (
 	packages/shared-types
 	services/auth-service
 	services/browser-manager
+	services/file-service
 	services/gateway-service
 	services/session-service
 	services/streaming-service

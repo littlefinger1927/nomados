@@ -8,5 +8,6 @@ use (
 	services/browser-manager
 	services/gateway-service
 	services/session-service
+	services/streaming-service
 	services/workspace-orchestrator
 )

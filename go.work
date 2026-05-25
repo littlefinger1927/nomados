@@ -7,4 +7,5 @@ use (
 	services/auth-service
 	services/gateway-service
 	services/session-service
+	services/workspace-orchestrator
 )

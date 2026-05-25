@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package nomados.common.v1;
+
+option go_package = "github.com/nomados/nomados/packages/shared-types/gen/common/v1";
+
+message Empty {}
+
+message UUID {
+  string value = 1;
+}
+
+message Timestamp {
+  int64 seconds = 1;
+  int32 nanos = 2;
+}
+
+message ErrorResponse {
+  string code = 1;
+  string message = 2;
+  map<string, string> details = 3;
+}

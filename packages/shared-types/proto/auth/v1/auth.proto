@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package nomados.auth.v1;
+
+option go_package = "github.com/nomados/nomados/packages/shared-types/gen/auth/v1";
+
+import "common/v1/common.proto";
+
+service AuthService {
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc RegisterVerify(RegisterVerifyRequest) returns (RegisterVerifyResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc LoginVerify(LoginVerifyRequest) returns (LoginVerifyResponse);
+}
+
+message RegisterRequest {
+  string username = 1;
+  bytes device_public_key = 2;
+  string device_attestation = 3;
+}
+
+message RegisterResponse {
+  bytes webauthn_challenge = 1;
+  nomados.common.v1.UUID user_id = 2;
+}
+
+message RegisterVerifyRequest {
+  bytes credential_response = 1;
+  bytes device_signature = 2;
+  nomados.common.v1.UUID user_id = 3;
+}
+
+message RegisterVerifyResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  nomados.common.v1.UUID device_id = 3;
+}
+
+message LoginRequest {
+  bytes device_public_key = 1;
+}
+
+message LoginResponse {
+  bytes webauthn_challenge = 1;
+  nomados.common.v1.UUID user_id = 2;
+}
+
+message LoginVerifyRequest {
+  bytes assertion_response = 1;
+  bytes device_signature = 2;
+  nomados.common.v1.UUID user_id = 3;
+}
+
+message LoginVerifyResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  nomados.common.v1.UUID session_id = 3;
+  nomados.common.v1.UUID device_id = 4;
+}

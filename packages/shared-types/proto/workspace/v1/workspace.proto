@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package nomados.workspace.v1;
+
+option go_package = "github.com/nomados/nomados/packages/shared-types/gen/workspace/v1";
+
+import "common/v1/common.proto";
+
+service WorkspaceService {
+  rpc Create(CreateWorkspaceRequest) returns (CreateWorkspaceResponse);
+  rpc Get(GetWorkspaceRequest) returns (Workspace);
+  rpc List(ListWorkspacesRequest) returns (ListWorkspacesResponse);
+  rpc Pause(PauseWorkspaceRequest) returns (Workspace);
+  rpc Resume(ResumeWorkspaceRequest) returns (Workspace);
+  rpc Stop(StopWorkspaceRequest) returns (Workspace);
+  rpc Destroy(DestroyWorkspaceRequest) returns (nomados.common.v1.Empty);
+}
+
+enum WorkspaceState {
+  WORKSPACE_STATE_UNSPECIFIED = 0;
+  CREATING = 1;
+  RUNNING = 2;
+  PAUSED = 3;
+  STOPPING = 4;
+  STOPPED = 5;
+}
+
+message Workspace {
+  nomados.common.v1.UUID id = 1;
+  nomados.common.v1.UUID user_id = 2;
+  string name = 3;
+  WorkspaceState state = 4;
+  int64 created_at = 5;
+  int64 updated_at = 6;
+}
+
+message CreateWorkspaceRequest {
+  nomados.common.v1.UUID user_id = 1;
+  string name = 2;
+}
+
+message CreateWorkspaceResponse {
+  Workspace workspace = 1;
+}
+
+message GetWorkspaceRequest {
+  nomados.common.v1.UUID id = 1;
+}
+
+message ListWorkspacesRequest {
+  nomados.common.v1.UUID user_id = 1;
+}
+
+message ListWorkspacesResponse {
+  repeated Workspace workspaces = 1;
+}
+
+message PauseWorkspaceRequest {
+  nomados.common.v1.UUID id = 1;
+}
+
+message ResumeWorkspaceRequest {
+  nomados.common.v1.UUID id = 1;
+}
+
+message StopWorkspaceRequest {
+  nomados.common.v1.UUID id = 1;
+}
+
+message DestroyWorkspaceRequest {
+  nomados.common.v1.UUID id = 1;
+}

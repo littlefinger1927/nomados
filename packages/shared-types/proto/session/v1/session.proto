@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package nomados.session.v1;
+
+option go_package = "github.com/nomados/nomados/packages/shared-types/gen/session/v1";
+
+import "common/v1/common.proto";
+
+service SessionService {
+  rpc Create(CreateSessionRequest) returns (CreateSessionResponse);
+  rpc Validate(ValidateSessionRequest) returns (ValidateSessionResponse);
+  rpc Refresh(RefreshSessionRequest) returns (RefreshSessionResponse);
+  rpc Revoke(RevokeSessionRequest) returns (nomados.common.v1.Empty);
+}
+
+message CreateSessionRequest {
+  nomados.common.v1.UUID user_id = 1;
+  nomados.common.v1.UUID device_id = 2;
+  string ip_hash = 3;
+  int32 risk_score = 4;
+}
+
+message CreateSessionResponse {
+  nomados.common.v1.UUID session_id = 1;
+  string access_token = 2;
+  string refresh_token = 3;
+}
+
+message ValidateSessionRequest {
+  string access_token = 1;
+  bytes device_public_key = 2;
+}
+
+message ValidateSessionResponse {
+  bool valid = 1;
+  nomados.common.v1.UUID session_id = 2;
+  nomados.common.v1.UUID user_id = 3;
+  nomados.common.v1.UUID device_id = 4;
+}
+
+message RefreshSessionRequest {
+  string refresh_token = 1;
+  bytes device_public_key = 2;
+}
+
+message RefreshSessionResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+}
+
+message RevokeSessionRequest {
+  nomados.common.v1.UUID session_id = 1;
+}

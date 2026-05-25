@@ -1,0 +1,63 @@
+package main
+
+import (
+	"context"
+	"log"
+	"net"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	authv1 "github.com/nomados/nomados/packages/shared-types/gen/auth/v1"
+	"github.com/nomados/nomados/services/auth-service/internal/handler"
+	"github.com/nomados/nomados/services/auth-service/internal/repository"
+	"github.com/nomados/nomados/services/auth-service/internal/service"
+	"google.golang.org/grpc"
+)
+
+func main() {
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		dbURL = "postgres://nomados:nomados_dev@localhost:5432/nomados?sslmode=disable"
+	}
+	listenAddr := os.Getenv("AUTH_SERVICE_ADDR")
+	if listenAddr == "" {
+		listenAddr = ":50051"
+	}
+
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, dbURL)
+	if err != nil {
+		log.Fatalf("failed to connect to database: %v", err)
+	}
+	defer pool.Close()
+
+	if err := pool.Ping(ctx); err != nil {
+		log.Fatalf("failed to ping database: %v", err)
+	}
+
+	repo := repository.NewPostgresRepository(pool)
+	svc := service.NewAuthService(repo)
+	authHandler := handler.NewAuthServiceHandler(svc)
+
+	grpcServer := grpc.NewServer()
+	authv1.RegisterAuthServiceServer(grpcServer, authHandler)
+
+	lis, err := net.Listen("tcp", listenAddr)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		<-sigCh
+		grpcServer.GracefulStop()
+	}()
+
+	log.Printf("auth-service listening on %s", listenAddr)
+	if err := grpcServer.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
+}

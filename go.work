@@ -5,6 +5,7 @@ use (
 	packages/logging
 	packages/shared-types
 	services/auth-service
+	services/browser-manager
 	services/gateway-service
 	services/session-service
 	services/workspace-orchestrator

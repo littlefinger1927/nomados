@@ -17,7 +17,7 @@ type BrowserInstance struct {
 	Cmd         *exec.Cmd
 	WorkspaceID string
 	Fingerprint Fingerprint
-	ProfilePath  string
+	ProfilePath string
 }
 
 // CommandRunner abstracts exec.Command for testability.
@@ -135,6 +135,11 @@ func (l *ChromiumLauncher) Launch(ctx context.Context, workspaceID string) (*Bro
 		Setpgid: true, // Create new process group for clean shutdown
 	}
 
+	// Apply timezone spoofing via TZ environment variable.
+	// Chromium does not have a --timezone flag, so we set TZ at the
+	// process level to override the system timezone for this workspace.
+	cmd.Env = append(os.Environ(), "TZ="+fp.Timezone)
+
 	l.logger.Info("launching chromium", "workspace_id", workspaceID, "profile_path", profilePath, "pid_pending", true)
 
 	// Start the process
@@ -152,7 +157,7 @@ func (l *ChromiumLauncher) Launch(ctx context.Context, workspaceID string) (*Bro
 		Cmd:         cmd,
 		WorkspaceID: workspaceID,
 		Fingerprint: fp,
-		ProfilePath:  profilePath,
+		ProfilePath: profilePath,
 	}
 
 	l.instances.Store(workspaceID, instance)
@@ -253,8 +258,25 @@ func (l *ChromiumLauncher) buildArgs(fp Fingerprint, profilePath string) []strin
 		// Spoofed user agent
 		fmt.Sprintf("--user-agent=%s", fp.UserAgent),
 
-		// Timezone and language spoofing
+		// Language spoofing (timezone applied via TZ env var on the process)
 		fmt.Sprintf("--lang=%s", fp.Language),
+
+		// Canvas fingerprint mitigation: prevent canvas-based fingerprinting.
+		// Phase 2 will add a Chromium extension for canvas noise injection
+		// that adds random pixel noise to canvas reads.
+		"--disable-reading-from-canvas",
+
+		// WebGL mitigation: disabled to prevent WebGL fingerprinting.
+		// Phase 2 will add a Chromium extension for WebGL noise injection
+		// that adds random noise to rendering output.
+		"--disable-webgl",
+		"--disable-webgl-image-chromium",
+
+		// Font fingerprint baseline: reduce font enumeration surface.
+		// Phase 2 will add per-workspace custom font lists for full
+		// font virtualization.
+		"--disable-font-subpixel-positioning",
+		"--disable-local-fonts",
 
 		// Disable background timers and other noise sources
 		"--disable-background-timer-throttling",
@@ -272,10 +294,7 @@ func (l *ChromiumLauncher) buildArgs(fp Fingerprint, profilePath string) []strin
 		"--no-pings",
 
 		// Remote debugging port (for streaming service to connect)
-		"--remote-debugging-port=0", // auto-assign port
-
-		// Disable WebGL fingerprinting vector
-		"--disable-webgl",
+		"--remote-debugging-port=0",
 
 		// Use a blank page to start
 		"about:blank",

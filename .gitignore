@@ -1,0 +1,62 @@
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.out
+*.test
+*.prof
+vendor/
+
+# Rust
+target/
+**/*.rs.bk
+Cargo.lock
+
+# Node
+node_modules/
+dist/
+.next/
+.nuxt/
+.cache/
+*.tsbuildinfo
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Infrastructure
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/.terraform/
+*.pem
+*.key
+
+# Build artifacts
+bin/
+build/
+out/
+*.bin
+
+# Proto generated
+packages/shared-types/gen/
+
+# Debug
+__debug_bin*
+
+# Local tooling
+.superpowers/

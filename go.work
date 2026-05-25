@@ -1,0 +1,16 @@
+go 1.22
+
+use (
+    services/gateway-service
+    services/auth-service
+    services/session-service
+    services/workspace-orchestrator
+    services/browser-manager
+    services/streaming-service
+    services/file-service
+    services/vault-service
+    services/observability
+    packages/shared-types
+    packages/auth-sdk
+    packages/logging
+)

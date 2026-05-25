@@ -1,16 +1,10 @@
-go 1.22
+go 1.26.3
 
 use (
-    services/gateway-service
-    services/auth-service
-    services/session-service
-    services/workspace-orchestrator
-    services/browser-manager
-    services/streaming-service
-    services/file-service
-    services/vault-service
-    services/observability
-    packages/shared-types
-    packages/auth-sdk
-    packages/logging
+	packages/auth-sdk
+	packages/logging
+	packages/shared-types
+	services/auth-service
+	services/gateway-service
+	services/session-service
 )

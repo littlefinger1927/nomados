@@ -10,5 +10,6 @@ use (
 	services/gateway-service
 	services/session-service
 	services/streaming-service
+	services/vault-service
 	services/workspace-orchestrator
 )

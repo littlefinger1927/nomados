@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	vaultv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/vault/v1"
 	"github.com/nomados/nomados/packages/logging"
 	"github.com/nomados/nomados/services/vault-service/internal/handler"
 	vaultnats "github.com/nomados/nomados/services/vault-service/internal/nats"
@@ -46,17 +47,13 @@ func main() {
 		defer publisher.Close()
 	}
 
-	// Initialize handler.
+	// Initialize handler and gRPC adapter.
 	vaultHandler := handler.NewVaultServiceHandler(kd, publisher, logger)
+	grpcAdapter := handler.NewVaultServiceGRPCAdapter(vaultHandler)
 
 	// Set up gRPC server.
-	// Note: gRPC service registration will be added when vault proto stubs
-	// are generated in packages/shared-types/gen/vault/v1/.
-	// For Phase 1, the handler provides the business logic with struct-based
-	// request/response types that can be called directly or wrapped by
-	// a future gRPC service adapter.
 	grpcServer := grpc.NewServer()
-	_ = vaultHandler // Will be registered when proto stubs are available.
+	vaultv1.RegisterVaultServiceServer(grpcServer, grpcAdapter)
 
 	lis, err := net.Listen("tcp", listenAddr)
 	if err != nil {

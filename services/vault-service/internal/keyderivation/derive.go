@@ -130,3 +130,31 @@ func Zeroize(buffer []byte) {
 		buffer[i] = 0
 	}
 }
+
+// DeriveKeyID generates a deterministic key identifier from a context string
+// and key type (e.g., "workspace" or "file"). This is used for tracking key
+// rotations and lineage without exposing the key material itself.
+func DeriveKeyID(context string, keyType string) []byte {
+	h := sha256.New()
+	h.Write([]byte(keyType))
+	h.Write([]byte(":"))
+	h.Write([]byte(context))
+	return h.Sum(nil)[:16] // 16 bytes is sufficient for a key ID
+}
+
+// DeriveWorkspaceKeyContext derives a workspace key from a workspace ID string
+// for use as a parent key when deriving file keys. This is a Phase 1 helper
+// that produces a deterministic workspace key without requiring the master key
+// to be passed through the gRPC interface.
+func DeriveWorkspaceKeyContext(workspaceID string) []byte {
+	// Use a fixed info string as the "master key" context for Phase 1.
+	// In production, the actual master key will be provided by the client.
+	info := []byte("nomados-workspace-key-context")
+	hkdfReader := hkdf.New(sha256.New, info, workspaceKeyInfo, []byte(workspaceID))
+	key := make([]byte, KeyLength)
+	if _, err := hkdfReader.Read(key); err != nil {
+		// This should never fail with valid inputs
+		return nil
+	}
+	return key
+}

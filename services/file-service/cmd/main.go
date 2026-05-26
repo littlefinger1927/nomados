@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	filev1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/file/v1"
 	"github.com/nomados/nomados/services/file-service/internal/handler"
 	"github.com/nomados/nomados/services/file-service/internal/repository"
 	"github.com/nomados/nomados/services/file-service/internal/storage"
@@ -79,14 +80,12 @@ func main() {
 	repo := repository.NewPostgresRepository(pool)
 	fileHandler := handler.NewFileServiceHandler(store, repo)
 
+	// Create gRPC adapter that wraps the handler to implement FileServiceServer.
+	grpcAdapter := handler.NewFileServiceGRPCAdapter(fileHandler)
+
 	// Set up gRPC server.
-	// Note: gRPC service registration will be added when file proto stubs
-	// are generated in packages/shared-types/gen/file/v1/.
-	// For Phase 1, the handler provides the business logic with struct-based
-	// request/response types that can be called directly or wrapped by
-	// a future gRPC service adapter.
 	grpcServer := grpc.NewServer()
-	_ = fileHandler // Will be registered when proto stubs are available.
+	filev1.RegisterFileServiceServer(grpcServer, grpcAdapter)
 
 	lis, err := net.Listen("tcp", listenAddr)
 	if err != nil {

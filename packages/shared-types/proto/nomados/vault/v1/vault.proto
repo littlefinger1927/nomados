@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package nomados.vault.v1;
+
+option go_package = "github.com/nomados/nomados/packages/shared-types/gen/vault/v1";
+
+import "nomados/common/v1/common.proto";
+import "google/api/annotations.proto";
+
+service VaultService {
+  rpc DeriveWorkspaceKey(DeriveWorkspaceKeyRequest) returns (DeriveWorkspaceKeyResponse) {
+    option (google.api.http) = {post: "/v1/vault/derive_workspace_key"};
+  }
+  rpc DeriveFileKey(DeriveFileKeyRequest) returns (DeriveFileKeyResponse) {
+    option (google.api.http) = {post: "/v1/vault/derive_file_key"};
+  }
+  rpc RotateWorkspaceKey(RotateWorkspaceKeyRequest) returns (nomados.common.v1.Empty) {
+    option (google.api.http) = {post: "/v1/vault/rotate_workspace_key"};
+  }
+}
+
+message DeriveWorkspaceKeyRequest {
+  nomados.common.v1.UUID user_id = 1;
+  nomados.common.v1.UUID workspace_id = 2;
+}
+
+message DeriveWorkspaceKeyResponse {
+  bytes encrypted_key = 1;
+  bytes key_id = 2;
+}
+
+message DeriveFileKeyRequest {
+  nomados.common.v1.UUID workspace_id = 1;
+  nomados.common.v1.UUID file_id = 2;
+}
+
+message DeriveFileKeyResponse {
+  bytes encrypted_key = 1;
+  bytes key_id = 2;
+}
+
+message RotateWorkspaceKeyRequest {
+  nomados.common.v1.UUID workspace_id = 1;
+  nomados.common.v1.UUID user_id = 2;
+}

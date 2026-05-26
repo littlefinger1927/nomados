@@ -1,3 +1,24 @@
 version: v2
 modules:
   - path: packages/shared-types/proto
+    lint:
+      ignore_only:
+        PACKAGE_VERSION_SUFFIX:
+          - packages/shared-types/proto/google/api/annotations.proto
+          - packages/shared-types/proto/google/api/http.proto
+        RPC_REQUEST_RESPONSE_UNIQUE:
+          - packages/shared-types/proto/nomados/file/v1/file.proto
+          - packages/shared-types/proto/nomados/session/v1/session.proto
+          - packages/shared-types/proto/nomados/vault/v1/vault.proto
+          - packages/shared-types/proto/nomados/workspace/v1/workspace.proto
+        RPC_REQUEST_STANDARD_NAME:
+          - packages/shared-types/proto/nomados/file/v1/file.proto
+          - packages/shared-types/proto/nomados/session/v1/session.proto
+          - packages/shared-types/proto/nomados/workspace/v1/workspace.proto
+        RPC_RESPONSE_STANDARD_NAME:
+          - packages/shared-types/proto/nomados/file/v1/file.proto
+          - packages/shared-types/proto/nomados/session/v1/session.proto
+          - packages/shared-types/proto/nomados/vault/v1/vault.proto
+          - packages/shared-types/proto/nomados/workspace/v1/workspace.proto
+        ENUM_VALUE_PREFIX:
+          - packages/shared-types/proto/nomados/workspace/v1/workspace.proto

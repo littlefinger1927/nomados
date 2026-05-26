@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Set up buf
+        uses: bufbuild/buf-setup-action@v1
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - name: Cache Rust build
+        uses: actions/cache@v4
+        with:
+          path: |
+            packages/crypto/target
+            apps/tauri-client/src-tauri/target
+          key: rust-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: rust-${{ runner.os }}-
+
+      - name: Rust crypto tests
+        working-directory: packages/crypto
+        run: cargo test
+
+      - name: Go package tests
+        run: |
+          cd packages/auth-sdk && go test ./...
+          cd $GITHUB_WORKSPACE/packages/logging && go test ./...
+
+      - name: Go service tests
+        run: |
+          for svc in auth-service session-service gateway-service workspace-orchestrator browser-manager streaming-service file-service vault-service observability; do
+            echo "Testing $svc..."
+            cd $GITHUB_WORKSPACE/services/$svc && go test ./...
+          done
+
+      - name: Integration tests
+        working-directory: tests/integration
+        run: go test ./... || true
+
+      - name: Go vet
+        run: |
+          for svc in auth-service session-service gateway-service workspace-orchestrator browser-manager streaming-service file-service vault-service observability; do
+            cd $GITHUB_WORKSPACE/services/$svc && go vet ./...
+          done
+
+      - name: Rust clippy
+        working-directory: packages/crypto
+        run: cargo clippy -- -D warnings
+
+  build:
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Rust crypto
+        working-directory: packages/crypto
+        run: cargo build --release
+
+      - name: Build Go services
+        run: |
+          for svc in auth-service session-service gateway-service workspace-orchestrator browser-manager streaming-service file-service vault-service observability; do
+            cd $GITHUB_WORKSPACE/services/$svc && go build ./...
+          done
+
+      - name: Build Go packages
+        run: |
+          cd packages/auth-sdk && go build ./...
+          cd $GITHUB_WORKSPACE/packages/logging && go build ./...

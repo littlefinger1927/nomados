@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	workspacev1 "github.com/nomados/nomados/packages/shared-types/gen/workspace/v1"
+	workspacev1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/workspace/v1"
 	"github.com/nomados/nomados/packages/logging"
 	"github.com/nomados/nomados/services/workspace-orchestrator/internal/docker"
 	"github.com/nomados/nomados/services/workspace-orchestrator/internal/handler"

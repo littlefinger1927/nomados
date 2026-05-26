@@ -3,8 +3,8 @@ package handler
 import (
 	"context"
 
-	sessionv1 "github.com/nomados/nomados/packages/shared-types/gen/session/v1"
-	commonv1 "github.com/nomados/nomados/packages/shared-types/gen/common/v1"
+	commonv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/common/v1"
+	sessionv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/session/v1"
 	"github.com/nomados/nomados/services/session-service/internal/service"
 )
 
@@ -23,19 +23,18 @@ func NewSessionServiceHandler(svc *service.SessionService) *SessionServiceHandle
 
 // Create handles the gRPC Create RPC.
 func (h *SessionServiceHandler) Create(ctx context.Context, req *sessionv1.CreateSessionRequest) (*sessionv1.CreateSessionResponse, error) {
-	result, err := h.svc.CreateSession(ctx, req.UserId, req.DeviceId, req.IpHash, int(req.RiskScore))
+	userID := req.GetUserId().GetValue()
+	deviceID := req.GetDeviceId().GetValue()
+
+	result, err := h.svc.CreateSession(ctx, userID, deviceID, req.IpHash, int(req.RiskScore))
 	if err != nil {
 		return nil, err
 	}
 
 	return &sessionv1.CreateSessionResponse{
-		SessionId:    result.SessionID,
-		AccessToken:  result.AccessToken,
+		SessionId:   &commonv1.UUID{Value: result.SessionID},
+		AccessToken: result.AccessToken,
 		RefreshToken: result.RefreshToken,
-		ExpiresAt: &commonv1.Timestamp{
-			Seconds: result.ExpiresAt.Unix(),
-			Nanos:   int32(result.ExpiresAt.Nanosecond()),
-		},
 	}, nil
 }
 
@@ -50,9 +49,9 @@ func (h *SessionServiceHandler) Validate(ctx context.Context, req *sessionv1.Val
 
 	return &sessionv1.ValidateSessionResponse{
 		Valid:     true,
-		UserId:    claims.UserID,
-		SessionId: claims.SessionID,
-		DeviceId:  claims.DeviceID,
+		UserId:    &commonv1.UUID{Value: claims.UserID},
+		SessionId: &commonv1.UUID{Value: claims.SessionID},
+		DeviceId:  &commonv1.UUID{Value: claims.DeviceID},
 	}, nil
 }
 
@@ -64,19 +63,15 @@ func (h *SessionServiceHandler) Refresh(ctx context.Context, req *sessionv1.Refr
 	}
 
 	return &sessionv1.RefreshSessionResponse{
-		SessionId:    result.SessionID,
-		AccessToken:   result.AccessToken,
-		RefreshToken:  result.RefreshToken,
-		ExpiresAt: &commonv1.Timestamp{
-			Seconds: result.ExpiresAt.Unix(),
-			Nanos:   int32(result.ExpiresAt.Nanosecond()),
-		},
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
 	}, nil
 }
 
 // Revoke handles the gRPC Revoke RPC.
 func (h *SessionServiceHandler) Revoke(ctx context.Context, req *sessionv1.RevokeSessionRequest) (*commonv1.Empty, error) {
-	if err := h.svc.RevokeSession(ctx, req.SessionId); err != nil {
+	sessionID := req.GetSessionId().GetValue()
+	if err := h.svc.RevokeSession(ctx, sessionID); err != nil {
 		return nil, err
 	}
 	return &commonv1.Empty{}, nil

@@ -5,7 +5,8 @@ import (
 	"testing"
 	"time"
 
-	workspacev1 "github.com/nomados/nomados/packages/shared-types/gen/workspace/v1"
+	commonv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/common/v1"
+	workspacev1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/workspace/v1"
 )
 
 // TestCreateWorkspace tests creating a workspace and verifying
@@ -23,7 +24,7 @@ func TestCreateWorkspace(t *testing.T) {
 	wsName := "test-workspace-" + randomSuffix()
 
 	resp, err := client.Create(ctx, &workspacev1.CreateWorkspaceRequest{
-		UserID: userID,
+		UserId: &commonv1.UUID{Value: userID},
 		Name:   wsName,
 	})
 	if err != nil {
@@ -33,7 +34,7 @@ func TestCreateWorkspace(t *testing.T) {
 	if resp.Workspace == nil {
 		t.Fatal("expected workspace in response")
 	}
-	if resp.Workspace.ID == "" {
+	if resp.Workspace.GetId().GetValue() == "" {
 		t.Error("expected non-empty workspace ID")
 	}
 	if resp.Workspace.State != workspacev1.WorkspaceState_RUNNING {
@@ -42,8 +43,8 @@ func TestCreateWorkspace(t *testing.T) {
 	if resp.Workspace.Name != wsName {
 		t.Errorf("expected workspace name %s, got %s", wsName, resp.Workspace.Name)
 	}
-	if resp.Workspace.UserID != userID {
-		t.Errorf("expected user ID %s, got %s", userID, resp.Workspace.UserID)
+	if resp.Workspace.GetUserId().GetValue() != userID {
+		t.Errorf("expected user ID %s, got %s", userID, resp.Workspace.GetUserId().GetValue())
 	}
 }
 
@@ -60,17 +61,17 @@ func TestPauseResumeWorkspace(t *testing.T) {
 
 	// Create a workspace first
 	createResp, err := client.Create(ctx, &workspacev1.CreateWorkspaceRequest{
-		UserID: "ws-pause-user-" + randomSuffix(),
+		UserId: &commonv1.UUID{Value: "ws-pause-user-" + randomSuffix()},
 		Name:   "pause-test-workspace",
 	})
 	if err != nil {
 		t.Fatalf("Create RPC failed: %v", err)
 	}
-	wsID := createResp.Workspace.ID
+	wsID := createResp.Workspace.Id
 
 	// Pause the workspace
 	pauseResp, err := client.Pause(ctx, &workspacev1.PauseWorkspaceRequest{
-		ID: wsID,
+		Id: wsID,
 	})
 	if err != nil {
 		t.Fatalf("Pause RPC failed: %v", err)
@@ -81,7 +82,7 @@ func TestPauseResumeWorkspace(t *testing.T) {
 
 	// Resume the workspace
 	resumeResp, err := client.Resume(ctx, &workspacev1.ResumeWorkspaceRequest{
-		ID: wsID,
+		Id: wsID,
 	})
 	if err != nil {
 		t.Fatalf("Resume RPC failed: %v", err)
@@ -104,17 +105,17 @@ func TestStopWorkspace(t *testing.T) {
 
 	// Create a workspace
 	createResp, err := client.Create(ctx, &workspacev1.CreateWorkspaceRequest{
-		UserID: "ws-stop-user-" + randomSuffix(),
+		UserId: &commonv1.UUID{Value: "ws-stop-user-" + randomSuffix()},
 		Name:   "stop-test-workspace",
 	})
 	if err != nil {
 		t.Fatalf("Create RPC failed: %v", err)
 	}
-	wsID := createResp.Workspace.ID
+	wsID := createResp.Workspace.Id
 
 	// Stop the workspace
 	stopResp, err := client.Stop(ctx, &workspacev1.StopWorkspaceRequest{
-		ID: wsID,
+		Id: wsID,
 	})
 	if err != nil {
 		t.Fatalf("Stop RPC failed: %v", err)
@@ -137,17 +138,17 @@ func TestDestroyWorkspace(t *testing.T) {
 
 	// Create a workspace
 	createResp, err := client.Create(ctx, &workspacev1.CreateWorkspaceRequest{
-		UserID: "ws-destroy-user-" + randomSuffix(),
+		UserId: &commonv1.UUID{Value: "ws-destroy-user-" + randomSuffix()},
 		Name:   "destroy-test-workspace",
 	})
 	if err != nil {
 		t.Fatalf("Create RPC failed: %v", err)
 	}
-	wsID := createResp.Workspace.ID
+	wsID := createResp.Workspace.Id
 
 	// Stop the workspace first
 	_, err = client.Stop(ctx, &workspacev1.StopWorkspaceRequest{
-		ID: wsID,
+		Id: wsID,
 	})
 	if err != nil {
 		t.Fatalf("Stop RPC failed: %v", err)
@@ -155,7 +156,7 @@ func TestDestroyWorkspace(t *testing.T) {
 
 	// Destroy the workspace
 	_, err = client.Destroy(ctx, &workspacev1.DestroyWorkspaceRequest{
-		ID: wsID,
+		Id: wsID,
 	})
 	if err != nil {
 		t.Fatalf("Destroy RPC failed: %v", err)
@@ -163,7 +164,7 @@ func TestDestroyWorkspace(t *testing.T) {
 
 	// Verify the workspace no longer exists
 	_, err = client.Get(ctx, &workspacev1.GetWorkspaceRequest{
-		ID: wsID,
+		Id: wsID,
 	})
 	if err == nil {
 		t.Error("expected error when getting destroyed workspace, got nil")
@@ -183,17 +184,17 @@ func TestInvalidStateTransition(t *testing.T) {
 
 	// Create and stop a workspace
 	createResp, err := client.Create(ctx, &workspacev1.CreateWorkspaceRequest{
-		UserID: "ws-invalid-user-" + randomSuffix(),
+		UserId: &commonv1.UUID{Value: "ws-invalid-user-" + randomSuffix()},
 		Name:   "invalid-transition-workspace",
 	})
 	if err != nil {
 		t.Fatalf("Create RPC failed: %v", err)
 	}
-	wsID := createResp.Workspace.ID
+	wsID := createResp.Workspace.Id
 
 	// Stop the workspace
 	_, err = client.Stop(ctx, &workspacev1.StopWorkspaceRequest{
-		ID: wsID,
+		Id: wsID,
 	})
 	if err != nil {
 		t.Fatalf("Stop RPC failed: %v", err)
@@ -201,7 +202,7 @@ func TestInvalidStateTransition(t *testing.T) {
 
 	// Attempt to pause a stopped workspace (should fail)
 	_, err = client.Pause(ctx, &workspacev1.PauseWorkspaceRequest{
-		ID: wsID,
+		Id: wsID,
 	})
 	if err == nil {
 		t.Error("expected error when pausing a stopped workspace, got nil")

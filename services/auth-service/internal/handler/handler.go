@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	authv1 "github.com/nomados/nomados/packages/shared-types/gen/auth/v1"
-	commonv1 "github.com/nomados/nomados/packages/shared-types/gen/common/v1"
+	authv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/auth/v1"
+	commonv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/common/v1"
 	"github.com/nomados/nomados/services/auth-service/internal/service"
 )
 

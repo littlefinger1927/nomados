@@ -9,7 +9,7 @@ import (
 	"syscall"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	sessionv1 "github.com/nomados/nomados/packages/shared-types/gen/session/v1"
+	sessionv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/session/v1"
 	"github.com/nomados/nomados/services/session-service/internal/handler"
 	"github.com/nomados/nomados/services/session-service/internal/nats"
 	"github.com/nomados/nomados/services/session-service/internal/repository"

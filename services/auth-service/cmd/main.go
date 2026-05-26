@@ -9,7 +9,7 @@ import (
 	"syscall"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	authv1 "github.com/nomados/nomados/packages/shared-types/gen/auth/v1"
+	authv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/auth/v1"
 	"github.com/nomados/nomados/services/auth-service/internal/handler"
 	"github.com/nomados/nomados/services/auth-service/internal/repository"
 	"github.com/nomados/nomados/services/auth-service/internal/service"

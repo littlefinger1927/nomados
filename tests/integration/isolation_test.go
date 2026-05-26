@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
-	sessionv1 "github.com/nomados/nomados/packages/shared-types/gen/session/v1"
-	workspacev1 "github.com/nomados/nomados/packages/shared-types/gen/workspace/v1"
+	commonv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/common/v1"
+	sessionv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/session/v1"
+	workspacev1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/workspace/v1"
 )
 
 // TestWorkspaceNetworkIsolation verifies that workspace containers
@@ -26,7 +27,7 @@ func TestWorkspaceNetworkIsolation(t *testing.T) {
 
 	// Create two workspaces for the same user
 	ws1, err := client.Create(ctx, &workspacev1.CreateWorkspaceRequest{
-		UserID: userID,
+		UserId: &commonv1.UUID{Value: userID},
 		Name:   "isolated-workspace-1",
 	})
 	if err != nil {
@@ -34,7 +35,7 @@ func TestWorkspaceNetworkIsolation(t *testing.T) {
 	}
 
 	ws2, err := client.Create(ctx, &workspacev1.CreateWorkspaceRequest{
-		UserID: userID,
+		UserId: &commonv1.UUID{Value: userID},
 		Name:   "isolated-workspace-2",
 	})
 	if err != nil {
@@ -42,12 +43,12 @@ func TestWorkspaceNetworkIsolation(t *testing.T) {
 	}
 
 	// Verify the workspaces have different IDs
-	if ws1.Workspace.ID == ws2.Workspace.ID {
+	if ws1.Workspace.GetId().GetValue() == ws2.Workspace.GetId().GetValue() {
 		t.Error("expected different workspace IDs for two created workspaces")
 	}
 
 	// Verify both workspaces belong to the same user
-	if ws1.Workspace.UserID != ws2.Workspace.UserID {
+	if ws1.Workspace.GetUserId().GetValue() != ws2.Workspace.GetUserId().GetValue() {
 		t.Error("expected both workspaces to belong to the same user")
 	}
 
@@ -61,8 +62,8 @@ func TestWorkspaceNetworkIsolation(t *testing.T) {
 
 	// Clean up: stop and destroy both workspaces
 	for _, ws := range []*workspacev1.CreateWorkspaceResponse{ws1, ws2} {
-		_, _ = client.Stop(ctx, &workspacev1.StopWorkspaceRequest{ID: ws.Workspace.ID})
-		_, _ = client.Destroy(ctx, &workspacev1.DestroyWorkspaceRequest{ID: ws.Workspace.ID})
+		_, _ = client.Stop(ctx, &workspacev1.StopWorkspaceRequest{Id: ws.Workspace.Id})
+		_, _ = client.Destroy(ctx, &workspacev1.DestroyWorkspaceRequest{Id: ws.Workspace.Id})
 	}
 }
 
@@ -88,8 +89,8 @@ func TestSessionIsolation(t *testing.T) {
 
 	// Create session with device A
 	sessionA, err := client.Create(ctx, &sessionv1.CreateSessionRequest{
-		UserId:    userID,
-		DeviceId:  deviceA,
+		UserId:    &commonv1.UUID{Value: userID},
+		DeviceId:  &commonv1.UUID{Value: deviceA},
 		IpHash:    "hash-a",
 		RiskScore: 0,
 	})
@@ -99,8 +100,8 @@ func TestSessionIsolation(t *testing.T) {
 
 	// Create session with device B
 	sessionB, err := client.Create(ctx, &sessionv1.CreateSessionRequest{
-		UserId:    userID,
-		DeviceId:  deviceB,
+		UserId:    &commonv1.UUID{Value: userID},
+		DeviceId:  &commonv1.UUID{Value: deviceB},
 		IpHash:    "hash-b",
 		RiskScore: 0,
 	})
@@ -133,7 +134,7 @@ func TestSessionIsolation(t *testing.T) {
 	}
 
 	// Verify sessions have different session IDs
-	if sessionA.SessionId == sessionB.SessionId {
+	if sessionA.GetSessionId().GetValue() == sessionB.GetSessionId().GetValue() {
 		t.Error("expected different session IDs for different device sessions")
 	}
 
@@ -143,11 +144,11 @@ func TestSessionIsolation(t *testing.T) {
 	}
 
 	// Verify device binding: session A claims belong to device A, not device B
-	if validateRespA.DeviceId != deviceA {
-		t.Errorf("expected session A device ID %s, got %s", deviceA, validateRespA.DeviceId)
+	if validateRespA.GetDeviceId().GetValue() != deviceA {
+		t.Errorf("expected session A device ID %s, got %s", deviceA, validateRespA.GetDeviceId().GetValue())
 	}
-	if validateRespB.DeviceId != deviceB {
-		t.Errorf("expected session B device ID %s, got %s", deviceB, validateRespB.DeviceId)
+	if validateRespB.GetDeviceId().GetValue() != deviceB {
+		t.Errorf("expected session B device ID %s, got %s", deviceB, validateRespB.GetDeviceId().GetValue())
 	}
 }
 
@@ -167,7 +168,7 @@ func TestDataIsolation(t *testing.T) {
 
 	// Create workspaces for user A
 	wsA1, err := client.Create(ctx, &workspacev1.CreateWorkspaceRequest{
-		UserID: userA,
+		UserId: &commonv1.UUID{Value: userA},
 		Name:   "user-a-workspace-1",
 	})
 	if err != nil {
@@ -175,7 +176,7 @@ func TestDataIsolation(t *testing.T) {
 	}
 
 	wsA2, err := client.Create(ctx, &workspacev1.CreateWorkspaceRequest{
-		UserID: userA,
+		UserId: &commonv1.UUID{Value: userA},
 		Name:   "user-a-workspace-2",
 	})
 	if err != nil {
@@ -184,7 +185,7 @@ func TestDataIsolation(t *testing.T) {
 
 	// Create workspace for user B
 	wsB1, err := client.Create(ctx, &workspacev1.CreateWorkspaceRequest{
-		UserID: userB,
+		UserId: &commonv1.UUID{Value: userB},
 		Name:   "user-b-workspace-1",
 	})
 	if err != nil {
@@ -193,7 +194,7 @@ func TestDataIsolation(t *testing.T) {
 
 	// List workspaces for user A — should only see A1 and A2
 	listA, err := client.List(ctx, &workspacev1.ListWorkspacesRequest{
-		UserID: userA,
+		UserId: &commonv1.UUID{Value: userA},
 	})
 	if err != nil {
 		t.Fatalf("List workspaces for user A RPC failed: %v", err)
@@ -204,14 +205,14 @@ func TestDataIsolation(t *testing.T) {
 
 	// Verify none of user A's workspaces have user B's workspace ID
 	for _, ws := range listA.Workspaces {
-		if ws.ID == wsB1.Workspace.ID {
+		if ws.GetId().GetValue() == wsB1.Workspace.GetId().GetValue() {
 			t.Error("user A's workspace list includes user B's workspace - data isolation violation")
 		}
 	}
 
 	// List workspaces for user B — should only see B1
 	listB, err := client.List(ctx, &workspacev1.ListWorkspacesRequest{
-		UserID: userB,
+		UserId: &commonv1.UUID{Value: userB},
 	})
 	if err != nil {
 		t.Fatalf("List workspaces for user B RPC failed: %v", err)
@@ -222,14 +223,14 @@ func TestDataIsolation(t *testing.T) {
 
 	// Verify user B's list doesn't include user A's workspaces
 	for _, ws := range listB.Workspaces {
-		if ws.ID == wsA1.Workspace.ID || ws.ID == wsA2.Workspace.ID {
+		if ws.GetId().GetValue() == wsA1.Workspace.GetId().GetValue() || ws.GetId().GetValue() == wsA2.Workspace.GetId().GetValue() {
 			t.Error("user B's workspace list includes user A's workspace - data isolation violation")
 		}
 	}
 
 	// Clean up all workspaces
 	for _, ws := range []*workspacev1.CreateWorkspaceResponse{wsA1, wsA2, wsB1} {
-		_, _ = client.Stop(ctx, &workspacev1.StopWorkspaceRequest{ID: ws.Workspace.ID})
-		_, _ = client.Destroy(ctx, &workspacev1.DestroyWorkspaceRequest{ID: ws.Workspace.ID})
+		_, _ = client.Stop(ctx, &workspacev1.StopWorkspaceRequest{Id: ws.Workspace.Id})
+		_, _ = client.Destroy(ctx, &workspacev1.DestroyWorkspaceRequest{Id: ws.Workspace.Id})
 	}
 }

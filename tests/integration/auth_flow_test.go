@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	authv1 "github.com/nomados/nomados/packages/shared-types/gen/auth/v1"
-	commonv1 "github.com/nomados/nomados/packages/shared-types/gen/common/v1"
-	sessionv1 "github.com/nomados/nomados/packages/shared-types/gen/session/v1"
+	authv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/auth/v1"
+	commonv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/common/v1"
+	sessionv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/session/v1"
 )
 
 // TestUserRegistration tests registering a new user via the auth service
@@ -95,10 +95,10 @@ func TestSessionRefresh(t *testing.T) {
 
 	_, pubKey := generateTestKeyPair(t)
 
-	// Create a session (session proto uses plain strings for IDs)
+	// Create a session (session proto uses UUID types for IDs)
 	createResp, err := client.Create(ctx, &sessionv1.CreateSessionRequest{
-		UserId:    "test-user-refresh-" + randomSuffix(),
-		DeviceId:  "test-device-refresh-" + randomSuffix(),
+		UserId:    &commonv1.UUID{Value: "test-user-refresh-" + randomSuffix()},
+		DeviceId:  &commonv1.UUID{Value: "test-device-refresh-" + randomSuffix()},
 		IpHash:    "test-ip-hash",
 		RiskScore: 0,
 	})
@@ -155,8 +155,8 @@ func TestSessionRevocation(t *testing.T) {
 
 	// Create a session
 	createResp, err := client.Create(ctx, &sessionv1.CreateSessionRequest{
-		UserId:    "test-user-revoke-" + randomSuffix(),
-		DeviceId:  "test-device-revoke-" + randomSuffix(),
+		UserId:    &commonv1.UUID{Value: "test-user-revoke-" + randomSuffix()},
+		DeviceId:  &commonv1.UUID{Value: "test-device-revoke-" + randomSuffix()},
 		IpHash:    "test-ip-hash",
 		RiskScore: 0,
 	})
@@ -176,7 +176,7 @@ func TestSessionRevocation(t *testing.T) {
 		t.Fatal("expected session to be valid before revocation")
 	}
 
-	// Revoke the session (session proto uses plain string for session ID)
+	// Revoke the session
 	_, err = client.Revoke(ctx, &sessionv1.RevokeSessionRequest{
 		SessionId: createResp.SessionId,
 	})
@@ -215,8 +215,8 @@ func TestDeviceBinding(t *testing.T) {
 
 	// Create a session bound to a specific device
 	createResp, err := client.Create(ctx, &sessionv1.CreateSessionRequest{
-		UserId:    "test-user-bind-" + randomSuffix(),
-		DeviceId:  deviceID,
+		UserId:    &commonv1.UUID{Value: "test-user-bind-" + randomSuffix()},
+		DeviceId:  &commonv1.UUID{Value: deviceID},
 		IpHash:    "test-ip-hash",
 		RiskScore: 0,
 	})
@@ -235,11 +235,11 @@ func TestDeviceBinding(t *testing.T) {
 	if !validateResp.Valid {
 		t.Error("expected session to be valid with correct device key")
 	}
-	if validateResp.DeviceId == "" {
+	if validateResp.DeviceId == nil || validateResp.DeviceId.Value == "" {
 		t.Error("expected device ID in validated session claims")
 	}
-	if validateResp.DeviceId != deviceID {
-		t.Errorf("expected device ID %s, got %s", deviceID, validateResp.DeviceId)
+	if validateResp.DeviceId.Value != deviceID {
+		t.Errorf("expected device ID %s, got %s", deviceID, validateResp.DeviceId.Value)
 	}
 }
 

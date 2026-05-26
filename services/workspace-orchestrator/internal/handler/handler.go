@@ -3,8 +3,8 @@ package handler
 import (
 	"context"
 
-	commonv1 "github.com/nomados/nomados/packages/shared-types/gen/common/v1"
-	workspacev1 "github.com/nomados/nomados/packages/shared-types/gen/workspace/v1"
+	commonv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/common/v1"
+	workspacev1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/workspace/v1"
 	"github.com/nomados/nomados/services/workspace-orchestrator/internal/service"
 )
 
@@ -36,12 +36,12 @@ func toProtoWorkspace(ws *service.Workspace) *workspacev1.Workspace {
 	case service.StateStopped:
 		state = workspacev1.WorkspaceState_STOPPED
 	default:
-		state = workspacev1.WorkspaceState_UNSPECIFIED
+		state = workspacev1.WorkspaceState_WORKSPACE_STATE_UNSPECIFIED
 	}
 
 	return &workspacev1.Workspace{
-		ID:        ws.ID,
-		UserID:    ws.UserID,
+		Id:        &commonv1.UUID{Value: ws.ID},
+		UserId:    &commonv1.UUID{Value: ws.UserID},
 		Name:      ws.Name,
 		State:     state,
 		CreatedAt: ws.CreatedAt,
@@ -51,7 +51,9 @@ func toProtoWorkspace(ws *service.Workspace) *workspacev1.Workspace {
 
 // Create handles the gRPC Create RPC.
 func (h *WorkspaceServiceHandler) Create(ctx context.Context, req *workspacev1.CreateWorkspaceRequest) (*workspacev1.CreateWorkspaceResponse, error) {
-	ws, err := h.svc.CreateWorkspace(ctx, req.UserID, req.Name)
+	userID := req.GetUserId().GetValue()
+
+	ws, err := h.svc.CreateWorkspace(ctx, userID, req.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +65,9 @@ func (h *WorkspaceServiceHandler) Create(ctx context.Context, req *workspacev1.C
 
 // Get handles the gRPC Get RPC.
 func (h *WorkspaceServiceHandler) Get(ctx context.Context, req *workspacev1.GetWorkspaceRequest) (*workspacev1.Workspace, error) {
-	ws, err := h.svc.GetWorkspace(ctx, req.ID)
+	id := req.GetId().GetValue()
+
+	ws, err := h.svc.GetWorkspace(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +77,9 @@ func (h *WorkspaceServiceHandler) Get(ctx context.Context, req *workspacev1.GetW
 
 // List handles the gRPC List RPC.
 func (h *WorkspaceServiceHandler) List(ctx context.Context, req *workspacev1.ListWorkspacesRequest) (*workspacev1.ListWorkspacesResponse, error) {
-	workspaces, err := h.svc.ListWorkspaces(ctx, req.UserID)
+	userID := req.GetUserId().GetValue()
+
+	workspaces, err := h.svc.ListWorkspaces(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +96,9 @@ func (h *WorkspaceServiceHandler) List(ctx context.Context, req *workspacev1.Lis
 
 // Pause handles the gRPC Pause RPC.
 func (h *WorkspaceServiceHandler) Pause(ctx context.Context, req *workspacev1.PauseWorkspaceRequest) (*workspacev1.Workspace, error) {
-	ws, err := h.svc.PauseWorkspace(ctx, req.ID)
+	id := req.GetId().GetValue()
+
+	ws, err := h.svc.PauseWorkspace(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +108,9 @@ func (h *WorkspaceServiceHandler) Pause(ctx context.Context, req *workspacev1.Pa
 
 // Resume handles the gRPC Resume RPC.
 func (h *WorkspaceServiceHandler) Resume(ctx context.Context, req *workspacev1.ResumeWorkspaceRequest) (*workspacev1.Workspace, error) {
-	ws, err := h.svc.ResumeWorkspace(ctx, req.ID)
+	id := req.GetId().GetValue()
+
+	ws, err := h.svc.ResumeWorkspace(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +120,9 @@ func (h *WorkspaceServiceHandler) Resume(ctx context.Context, req *workspacev1.R
 
 // Stop handles the gRPC Stop RPC.
 func (h *WorkspaceServiceHandler) Stop(ctx context.Context, req *workspacev1.StopWorkspaceRequest) (*workspacev1.Workspace, error) {
-	ws, err := h.svc.StopWorkspace(ctx, req.ID)
+	id := req.GetId().GetValue()
+
+	ws, err := h.svc.StopWorkspace(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +132,9 @@ func (h *WorkspaceServiceHandler) Stop(ctx context.Context, req *workspacev1.Sto
 
 // Destroy handles the gRPC Destroy RPC.
 func (h *WorkspaceServiceHandler) Destroy(ctx context.Context, req *workspacev1.DestroyWorkspaceRequest) (*commonv1.Empty, error) {
-	if err := h.svc.DestroyWorkspace(ctx, req.ID); err != nil {
+	id := req.GetId().GetValue()
+
+	if err := h.svc.DestroyWorkspace(ctx, id); err != nil {
 		return nil, err
 	}
 

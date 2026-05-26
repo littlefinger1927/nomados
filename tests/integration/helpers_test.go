@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	authv1 "github.com/nomados/nomados/packages/shared-types/gen/auth/v1"
-	sessionv1 "github.com/nomados/nomados/packages/shared-types/gen/session/v1"
-	workspacev1 "github.com/nomados/nomados/packages/shared-types/gen/workspace/v1"
+	authv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/auth/v1"
+	sessionv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/session/v1"
+	workspacev1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/workspace/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

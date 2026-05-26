@@ -63,3 +63,56 @@ func (UnimplementedAuthServiceServer) Login(_ context.Context, _ *LoginRequest) 
 func (UnimplementedAuthServiceServer) LoginVerify(_ context.Context, _ *LoginVerifyRequest) (*LoginVerifyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LoginVerify not implemented")
 }
+
+// AuthServiceClient is the client API for AuthService.
+type AuthServiceClient interface {
+	Register(ctx context.Context, req *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
+	RegisterVerify(ctx context.Context, req *RegisterVerifyRequest, opts ...grpc.CallOption) (*RegisterVerifyResponse, error)
+	Login(ctx context.Context, req *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
+	LoginVerify(ctx context.Context, req *LoginVerifyRequest, opts ...grpc.CallOption) (*LoginVerifyResponse, error)
+}
+
+type authServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+// NewAuthServiceClient creates a new AuthServiceClient.
+func NewAuthServiceClient(cc grpc.ClientConnInterface) AuthServiceClient {
+	return &authServiceClient{cc}
+}
+
+func (c *authServiceClient) Register(ctx context.Context, req *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error) {
+	resp := new(RegisterResponse)
+	err := c.cc.Invoke(ctx, "/nomados.auth.v1.AuthService/Register", req, resp, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (c *authServiceClient) RegisterVerify(ctx context.Context, req *RegisterVerifyRequest, opts ...grpc.CallOption) (*RegisterVerifyResponse, error) {
+	resp := new(RegisterVerifyResponse)
+	err := c.cc.Invoke(ctx, "/nomados.auth.v1.AuthService/RegisterVerify", req, resp, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (c *authServiceClient) Login(ctx context.Context, req *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error) {
+	resp := new(LoginResponse)
+	err := c.cc.Invoke(ctx, "/nomados.auth.v1.AuthService/Login", req, resp, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (c *authServiceClient) LoginVerify(ctx context.Context, req *LoginVerifyRequest, opts ...grpc.CallOption) (*LoginVerifyResponse, error) {
+	resp := new(LoginVerifyResponse)
+	err := c.cc.Invoke(ctx, "/nomados.auth.v1.AuthService/LoginVerify", req, resp, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}

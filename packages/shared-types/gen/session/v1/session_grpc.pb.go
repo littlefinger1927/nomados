@@ -64,3 +64,56 @@ func (UnimplementedSessionServiceServer) Refresh(_ context.Context, _ *RefreshSe
 func (UnimplementedSessionServiceServer) Revoke(_ context.Context, _ *RevokeSessionRequest) (*commonv1.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Revoke not implemented")
 }
+
+// SessionServiceClient is the client API for SessionService.
+type SessionServiceClient interface {
+	Create(ctx context.Context, req *CreateSessionRequest, opts ...grpc.CallOption) (*CreateSessionResponse, error)
+	Validate(ctx context.Context, req *ValidateSessionRequest, opts ...grpc.CallOption) (*ValidateSessionResponse, error)
+	Refresh(ctx context.Context, req *RefreshSessionRequest, opts ...grpc.CallOption) (*RefreshSessionResponse, error)
+	Revoke(ctx context.Context, req *RevokeSessionRequest, opts ...grpc.CallOption) (*commonv1.Empty, error)
+}
+
+type sessionServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+// NewSessionServiceClient creates a new SessionServiceClient.
+func NewSessionServiceClient(cc grpc.ClientConnInterface) SessionServiceClient {
+	return &sessionServiceClient{cc}
+}
+
+func (c *sessionServiceClient) Create(ctx context.Context, req *CreateSessionRequest, opts ...grpc.CallOption) (*CreateSessionResponse, error) {
+	resp := new(CreateSessionResponse)
+	err := c.cc.Invoke(ctx, "/nomados.session.v1.SessionService/Create", req, resp, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (c *sessionServiceClient) Validate(ctx context.Context, req *ValidateSessionRequest, opts ...grpc.CallOption) (*ValidateSessionResponse, error) {
+	resp := new(ValidateSessionResponse)
+	err := c.cc.Invoke(ctx, "/nomados.session.v1.SessionService/Validate", req, resp, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (c *sessionServiceClient) Refresh(ctx context.Context, req *RefreshSessionRequest, opts ...grpc.CallOption) (*RefreshSessionResponse, error) {
+	resp := new(RefreshSessionResponse)
+	err := c.cc.Invoke(ctx, "/nomados.session.v1.SessionService/Refresh", req, resp, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (c *sessionServiceClient) Revoke(ctx context.Context, req *RevokeSessionRequest, opts ...grpc.CallOption) (*commonv1.Empty, error) {
+	resp := new(commonv1.Empty)
+	err := c.cc.Invoke(ctx, "/nomados.session.v1.SessionService/Revoke", req, resp, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}

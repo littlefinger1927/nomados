@@ -13,4 +13,5 @@ use (
 	services/streaming-service
 	services/vault-service
 	services/workspace-orchestrator
+	tests/integration
 )

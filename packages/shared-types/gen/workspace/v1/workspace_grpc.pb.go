@@ -88,3 +88,86 @@ func (UnimplementedWorkspaceServiceServer) Stop(_ context.Context, _ *StopWorksp
 func (UnimplementedWorkspaceServiceServer) Destroy(_ context.Context, _ *DestroyWorkspaceRequest) (*commonv1.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Destroy not implemented")
 }
+
+// WorkspaceServiceClient is the client API for WorkspaceService.
+type WorkspaceServiceClient interface {
+	Create(ctx context.Context, req *CreateWorkspaceRequest, opts ...grpc.CallOption) (*CreateWorkspaceResponse, error)
+	Get(ctx context.Context, req *GetWorkspaceRequest, opts ...grpc.CallOption) (*Workspace, error)
+	List(ctx context.Context, req *ListWorkspacesRequest, opts ...grpc.CallOption) (*ListWorkspacesResponse, error)
+	Pause(ctx context.Context, req *PauseWorkspaceRequest, opts ...grpc.CallOption) (*Workspace, error)
+	Resume(ctx context.Context, req *ResumeWorkspaceRequest, opts ...grpc.CallOption) (*Workspace, error)
+	Stop(ctx context.Context, req *StopWorkspaceRequest, opts ...grpc.CallOption) (*Workspace, error)
+	Destroy(ctx context.Context, req *DestroyWorkspaceRequest, opts ...grpc.CallOption) (*commonv1.Empty, error)
+}
+
+type workspaceServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+// NewWorkspaceServiceClient creates a new WorkspaceServiceClient.
+func NewWorkspaceServiceClient(cc grpc.ClientConnInterface) WorkspaceServiceClient {
+	return &workspaceServiceClient{cc}
+}
+
+func (c *workspaceServiceClient) Create(ctx context.Context, req *CreateWorkspaceRequest, opts ...grpc.CallOption) (*CreateWorkspaceResponse, error) {
+	resp := new(CreateWorkspaceResponse)
+	err := c.cc.Invoke(ctx, "/nomados.workspace.v1.WorkspaceService/Create", req, resp, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (c *workspaceServiceClient) Get(ctx context.Context, req *GetWorkspaceRequest, opts ...grpc.CallOption) (*Workspace, error) {
+	resp := new(Workspace)
+	err := c.cc.Invoke(ctx, "/nomados.workspace.v1.WorkspaceService/Get", req, resp, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (c *workspaceServiceClient) List(ctx context.Context, req *ListWorkspacesRequest, opts ...grpc.CallOption) (*ListWorkspacesResponse, error) {
+	resp := new(ListWorkspacesResponse)
+	err := c.cc.Invoke(ctx, "/nomados.workspace.v1.WorkspaceService/List", req, resp, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (c *workspaceServiceClient) Pause(ctx context.Context, req *PauseWorkspaceRequest, opts ...grpc.CallOption) (*Workspace, error) {
+	resp := new(Workspace)
+	err := c.cc.Invoke(ctx, "/nomados.workspace.v1.WorkspaceService/Pause", req, resp, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (c *workspaceServiceClient) Resume(ctx context.Context, req *ResumeWorkspaceRequest, opts ...grpc.CallOption) (*Workspace, error) {
+	resp := new(Workspace)
+	err := c.cc.Invoke(ctx, "/nomados.workspace.v1.WorkspaceService/Resume", req, resp, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (c *workspaceServiceClient) Stop(ctx context.Context, req *StopWorkspaceRequest, opts ...grpc.CallOption) (*Workspace, error) {
+	resp := new(Workspace)
+	err := c.cc.Invoke(ctx, "/nomados.workspace.v1.WorkspaceService/Stop", req, resp, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (c *workspaceServiceClient) Destroy(ctx context.Context, req *DestroyWorkspaceRequest, opts ...grpc.CallOption) (*commonv1.Empty, error) {
+	resp := new(commonv1.Empty)
+	err := c.cc.Invoke(ctx, "/nomados.workspace.v1.WorkspaceService/Destroy", req, resp, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}

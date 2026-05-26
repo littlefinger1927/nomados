@@ -8,6 +8,7 @@ use (
 	services/browser-manager
 	services/file-service
 	services/gateway-service
+	services/observability
 	services/session-service
 	services/streaming-service
 	services/vault-service

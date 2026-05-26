@@ -10,10 +10,12 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	authv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/auth/v1"
+	sessionv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/session/v1"
 	"github.com/nomados/nomados/services/auth-service/internal/handler"
 	"github.com/nomados/nomados/services/auth-service/internal/repository"
 	"github.com/nomados/nomados/services/auth-service/internal/service"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
@@ -24,6 +26,10 @@ func main() {
 	listenAddr := os.Getenv("AUTH_SERVICE_ADDR")
 	if listenAddr == "" {
 		listenAddr = ":50051"
+	}
+	sessionAddr := os.Getenv("SESSION_SERVICE_ADDR")
+	if sessionAddr == "" {
+		sessionAddr = "localhost:50052"
 	}
 
 	ctx := context.Background()
@@ -37,9 +43,18 @@ func main() {
 		log.Fatalf("failed to ping database: %v", err)
 	}
 
+	// Connect to session-service for real token generation.
+	sessionConn, err := grpc.NewClient(sessionAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("failed to connect to session service at %s: %v", sessionAddr, err)
+	}
+	defer sessionConn.Close()
+
+	sessionClient := sessionv1.NewSessionServiceClient(sessionConn)
+
 	repo := repository.NewPostgresRepository(pool)
 	svc := service.NewAuthService(repo)
-	authHandler := handler.NewAuthServiceHandler(svc)
+	authHandler := handler.NewAuthServiceHandler(svc, sessionClient)
 
 	grpcServer := grpc.NewServer()
 	authv1.RegisterAuthServiceServer(grpcServer, authHandler)

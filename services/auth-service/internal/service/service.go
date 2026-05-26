@@ -102,6 +102,15 @@ func (s *AuthService) Login(ctx context.Context, devicePublicKey []byte) (*repos
 	return user, challenge, nil
 }
 
+// GetDevicesForUser returns all devices registered for a user.
+func (s *AuthService) GetDevicesForUser(ctx context.Context, userID uuid.UUID) ([]*repository.Device, error) {
+	devices, err := s.repo.GetDevicesByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get devices: %w", err)
+	}
+	return devices, nil
+}
+
 // VerifyRegistration marks a device as trusted after WebAuthn verification.
 // Currently a stub — real WebAuthn verification will be added in a future iteration.
 func (s *AuthService) VerifyRegistration(ctx context.Context, userID uuid.UUID, credentialResponse []byte, deviceSignature []byte) error {

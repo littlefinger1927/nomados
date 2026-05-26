@@ -67,7 +67,7 @@ export default function LoginPage() {
 
   const handleRegister = async () => {
     // Step 1: Get registration challenge from server
-    const beginRes = await fetch(`${GATEWAY_URL}/auth/register/begin`, {
+    const beginRes = await fetch(`${GATEWAY_URL}/v1/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: username.trim() }),
@@ -106,7 +106,7 @@ export default function LoginPage() {
     const response = credential.response as AuthenticatorAttestationResponse;
 
     // Step 3: Send credential to server
-    const finishRes = await fetch(`${GATEWAY_URL}/auth/register/finish`, {
+    const finishRes = await fetch(`${GATEWAY_URL}/v1/auth/register_verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -129,7 +129,7 @@ export default function LoginPage() {
 
   const handleLogin = async () => {
     // Step 1: Get authentication challenge from server
-    const beginRes = await fetch(`${GATEWAY_URL}/auth/login/begin`, {
+    const beginRes = await fetch(`${GATEWAY_URL}/v1/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: username.trim() }),
@@ -164,7 +164,7 @@ export default function LoginPage() {
     const assertionResponse = assertion.response as AuthenticatorAssertionResponse;
 
     // Step 3: Send assertion to server
-    const finishRes = await fetch(`${GATEWAY_URL}/auth/login/finish`, {
+    const finishRes = await fetch(`${GATEWAY_URL}/v1/auth/login_verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

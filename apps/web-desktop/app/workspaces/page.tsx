@@ -68,7 +68,7 @@ function formatDate(iso: string): string {
 
 async function fetchWorkspacesFromApi(): Promise<Workspace[]> {
   const token = localStorage.getItem('nomados-session');
-  const res = await fetch(`${GATEWAY_URL}/workspace/list`, {
+  const res = await fetch(`${GATEWAY_URL}/v1/workspace/list`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
@@ -124,7 +124,7 @@ export default function WorkspacesPage() {
     setCreating(true);
     try {
       const token = localStorage.getItem('nomados-session');
-      const res = await fetch(`${GATEWAY_URL}/workspace/create`, {
+      const res = await fetch(`${GATEWAY_URL}/v1/workspace/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -173,9 +173,13 @@ export default function WorkspacesPage() {
 
     try {
       const token = localStorage.getItem('nomados-session');
-      await fetch(`${GATEWAY_URL}/workspace/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+      await fetch(`${GATEWAY_URL}/v1/workspace/destroy`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id }),
       });
     } catch {
       // Ignore - remove locally anyway for Phase 1
@@ -186,17 +190,21 @@ export default function WorkspacesPage() {
 
   const handleAction = async (id: string, action: 'connect' | 'resume' | 'pause' | 'stop') => {
     const actionMap: Record<string, string> = {
-      connect: '/connect',
-      resume: '/resume',
-      pause: '/pause',
-      stop: '/stop',
+      connect: '/v1/workspace/connect',
+      resume: '/v1/workspace/resume',
+      pause: '/v1/workspace/pause',
+      stop: '/v1/workspace/stop',
     };
 
     try {
       const token = localStorage.getItem('nomados-session');
-      await fetch(`${GATEWAY_URL}/workspace/${id}${actionMap[action]}`, {
+      await fetch(`${GATEWAY_URL}${actionMap[action]}`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id }),
       });
     } catch {
       // Mock action in Phase 1

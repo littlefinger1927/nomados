@@ -111,7 +111,7 @@ pub async fn register(username: String) -> Result<String, String> {
         "device_public_key": public_key_b64,
     });
 
-    let resp = client.post(format!("{}/auth/register", GATEWAY_URL))
+    let resp = client.post(format!("{}/v1/auth/register", GATEWAY_URL))
         .json(&body)
         .send()
         .await
@@ -134,7 +134,7 @@ pub async fn login(username: String) -> Result<String, String> {
         "username": username,
     });
 
-    let resp = client.post(format!("{}/auth/login", GATEWAY_URL))
+    let resp = client.post(format!("{}/v1/auth/login", GATEWAY_URL))
         .json(&body)
         .send()
         .await
@@ -158,7 +158,7 @@ pub async fn verify_login(credential_response: String) -> Result<String, String>
         "credential_response": credential_response,
     });
 
-    let resp = client.post(format!("{}/auth/login/verify", GATEWAY_URL))
+    let resp = client.post(format!("{}/v1/auth/login_verify", GATEWAY_URL))
         .json(&body)
         .send()
         .await

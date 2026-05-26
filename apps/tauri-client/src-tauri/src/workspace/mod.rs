@@ -56,7 +56,7 @@ pub async fn list_workspaces() -> Result<Vec<Workspace>, String> {
     let token = get_auth_token()?;
     let client = reqwest::Client::new();
 
-    let resp = client.get(format!("{}/workspace/list", GATEWAY_URL))
+    let resp = client.get(format!("{}/v1/workspace/list", GATEWAY_URL))
         .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
@@ -83,7 +83,7 @@ pub async fn create_workspace(name: String) -> Result<Workspace, String> {
         "name": name,
     });
 
-    let resp = client.post(format!("{}/workspace/create", GATEWAY_URL))
+    let resp = client.post(format!("{}/v1/workspace/create", GATEWAY_URL))
         .header("Authorization", format!("Bearer {}", token))
         .json(&body)
         .send()
@@ -111,7 +111,7 @@ pub async fn pause_workspace(id: String) -> Result<Workspace, String> {
         "id": id,
     });
 
-    let resp = client.post(format!("{}/workspace/pause", GATEWAY_URL))
+    let resp = client.post(format!("{}/v1/workspace/pause", GATEWAY_URL))
         .header("Authorization", format!("Bearer {}", token))
         .json(&body)
         .send()
@@ -139,7 +139,7 @@ pub async fn resume_workspace(id: String) -> Result<Workspace, String> {
         "id": id,
     });
 
-    let resp = client.post(format!("{}/workspace/resume", GATEWAY_URL))
+    let resp = client.post(format!("{}/v1/workspace/resume", GATEWAY_URL))
         .header("Authorization", format!("Bearer {}", token))
         .json(&body)
         .send()
@@ -167,7 +167,7 @@ pub async fn destroy_workspace(id: String) -> Result<String, String> {
         "id": id,
     });
 
-    let resp = client.post(format!("{}/workspace/destroy", GATEWAY_URL))
+    let resp = client.post(format!("{}/v1/workspace/destroy", GATEWAY_URL))
         .header("Authorization", format!("Bearer {}", token))
         .json(&body)
         .send()

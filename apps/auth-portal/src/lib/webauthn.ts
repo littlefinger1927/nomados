@@ -55,7 +55,7 @@ export interface AuthResult {
 export async function registerPasskey(username: string): Promise<AuthResult> {
   try {
     // Step 1: Get registration challenge from server
-    const beginRes = await fetch(`${GATEWAY_URL}/auth/register/begin`, {
+    const beginRes = await fetch(`${GATEWAY_URL}/v1/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username }),
@@ -92,7 +92,7 @@ export async function registerPasskey(username: string): Promise<AuthResult> {
     const response = credential.response as AuthenticatorAttestationResponse;
 
     // Step 3: Send credential to server
-    const finishRes = await fetch(`${GATEWAY_URL}/auth/register/finish`, {
+    const finishRes = await fetch(`${GATEWAY_URL}/v1/auth/register_verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -125,7 +125,7 @@ export async function registerPasskey(username: string): Promise<AuthResult> {
 export async function authenticatePasskey(username: string): Promise<AuthResult> {
   try {
     // Step 1: Get authentication challenge from server
-    const beginRes = await fetch(`${GATEWAY_URL}/auth/login/begin`, {
+    const beginRes = await fetch(`${GATEWAY_URL}/v1/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username }),
@@ -158,7 +158,7 @@ export async function authenticatePasskey(username: string): Promise<AuthResult>
     const assertionResponse = assertion.response as AuthenticatorAssertionResponse;
 
     // Step 3: Send assertion to server
-    const finishRes = await fetch(`${GATEWAY_URL}/auth/login/finish`, {
+    const finishRes = await fetch(`${GATEWAY_URL}/v1/auth/login_verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

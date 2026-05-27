@@ -611,15 +611,15 @@ const file_nomados_workspace_v1_workspace_proto_rawDesc = "" +
 	"\n" +
 	"\x06PAUSED\x10\x03\x12\f\n" +
 	"\bSTOPPING\x10\x04\x12\v\n" +
-	"\aSTOPPED\x10\x052\xd4\x06\n" +
-	"\x10WorkspaceService\x12\x83\x01\n" +
-	"\x06Create\x12,.nomados.workspace.v1.CreateWorkspaceRequest\x1a-.nomados.workspace.v1.CreateWorkspaceResponse\"\x1c\x82\xd3\xe4\x93\x02\x16\"\x14/v1/workspace/create\x12l\n" +
-	"\x03Get\x12).nomados.workspace.v1.GetWorkspaceRequest\x1a\x1f.nomados.workspace.v1.Workspace\"\x19\x82\xd3\xe4\x93\x02\x13\"\x11/v1/workspace/get\x12}\n" +
-	"\x04List\x12+.nomados.workspace.v1.ListWorkspacesRequest\x1a,.nomados.workspace.v1.ListWorkspacesResponse\"\x1a\x82\xd3\xe4\x93\x02\x14\"\x12/v1/workspace/list\x12r\n" +
-	"\x05Pause\x12+.nomados.workspace.v1.PauseWorkspaceRequest\x1a\x1f.nomados.workspace.v1.Workspace\"\x1b\x82\xd3\xe4\x93\x02\x15\"\x13/v1/workspace/pause\x12u\n" +
-	"\x06Resume\x12,.nomados.workspace.v1.ResumeWorkspaceRequest\x1a\x1f.nomados.workspace.v1.Workspace\"\x1c\x82\xd3\xe4\x93\x02\x16\"\x14/v1/workspace/resume\x12o\n" +
-	"\x04Stop\x12*.nomados.workspace.v1.StopWorkspaceRequest\x1a\x1f.nomados.workspace.v1.Workspace\"\x1a\x82\xd3\xe4\x93\x02\x14\"\x12/v1/workspace/stop\x12q\n" +
-	"\aDestroy\x12-.nomados.workspace.v1.DestroyWorkspaceRequest\x1a\x18.nomados.common.v1.Empty\"\x1d\x82\xd3\xe4\x93\x02\x17\"\x15/v1/workspace/destroyB\xf3\x01\n" +
+	"\aSTOPPED\x10\x052\xea\x06\n" +
+	"\x10WorkspaceService\x12\x86\x01\n" +
+	"\x06Create\x12,.nomados.workspace.v1.CreateWorkspaceRequest\x1a-.nomados.workspace.v1.CreateWorkspaceResponse\"\x1f\x82\xd3\xe4\x93\x02\x19:\x01*\"\x14/v1/workspace/create\x12o\n" +
+	"\x03Get\x12).nomados.workspace.v1.GetWorkspaceRequest\x1a\x1f.nomados.workspace.v1.Workspace\"\x1c\x82\xd3\xe4\x93\x02\x16:\x01*\"\x11/v1/workspace/get\x12\x80\x01\n" +
+	"\x04List\x12+.nomados.workspace.v1.ListWorkspacesRequest\x1a,.nomados.workspace.v1.ListWorkspacesResponse\"\x1d\x82\xd3\xe4\x93\x02\x17:\x01*\"\x12/v1/workspace/list\x12u\n" +
+	"\x05Pause\x12+.nomados.workspace.v1.PauseWorkspaceRequest\x1a\x1f.nomados.workspace.v1.Workspace\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\"\x13/v1/workspace/pause\x12x\n" +
+	"\x06Resume\x12,.nomados.workspace.v1.ResumeWorkspaceRequest\x1a\x1f.nomados.workspace.v1.Workspace\"\x1f\x82\xd3\xe4\x93\x02\x19:\x01*\"\x14/v1/workspace/resume\x12r\n" +
+	"\x04Stop\x12*.nomados.workspace.v1.StopWorkspaceRequest\x1a\x1f.nomados.workspace.v1.Workspace\"\x1d\x82\xd3\xe4\x93\x02\x17:\x01*\"\x12/v1/workspace/stop\x12t\n" +
+	"\aDestroy\x12-.nomados.workspace.v1.DestroyWorkspaceRequest\x1a\x18.nomados.common.v1.Empty\" \x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/v1/workspace/destroyB\xf3\x01\n" +
 	"\x18com.nomados.workspace.v1B\x0eWorkspaceProtoP\x01ZUgithub.com/nomados/nomados/packages/shared-types/gen/nomados/workspace/v1;workspacev1\xa2\x02\x03NWX\xaa\x02\x14Nomados.Workspace.V1\xca\x02\x14Nomados\\Workspace\\V1\xe2\x02 Nomados\\Workspace\\V1\\GPBMetadata\xea\x02\x16Nomados::Workspace::V1b\x06proto3"
 
 var (

@@ -9,16 +9,16 @@ import "google/api/annotations.proto";
 
 service FileService {
   rpc Upload(stream UploadRequest) returns (UploadResponse) {
-    option (google.api.http) = {post: "/v1/file/upload"};
+    option (google.api.http) = {post: "/v1/file/upload" body: "*"};
   }
   rpc Download(DownloadRequest) returns (stream DownloadResponse) {
-    option (google.api.http) = {post: "/v1/file/download"};
+    option (google.api.http) = {post: "/v1/file/download" body: "*"};
   }
   rpc List(ListFilesRequest) returns (ListFilesResponse) {
-    option (google.api.http) = {post: "/v1/file/list"};
+    option (google.api.http) = {post: "/v1/file/list" body: "*"};
   }
   rpc Delete(DeleteFileRequest) returns (nomados.common.v1.Empty) {
-    option (google.api.http) = {post: "/v1/file/delete"};
+    option (google.api.http) = {post: "/v1/file/delete" body: "*"};
   }
 }
 

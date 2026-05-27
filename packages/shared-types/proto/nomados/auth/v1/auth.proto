@@ -9,16 +9,16 @@ import "google/api/annotations.proto";
 
 service AuthService {
   rpc Register(RegisterRequest) returns (RegisterResponse) {
-    option (google.api.http) = {post: "/v1/auth/register"};
+    option (google.api.http) = {post: "/v1/auth/register" body: "*"};
   }
   rpc RegisterVerify(RegisterVerifyRequest) returns (RegisterVerifyResponse) {
-    option (google.api.http) = {post: "/v1/auth/register_verify"};
+    option (google.api.http) = {post: "/v1/auth/register_verify" body: "*"};
   }
   rpc Login(LoginRequest) returns (LoginResponse) {
-    option (google.api.http) = {post: "/v1/auth/login"};
+    option (google.api.http) = {post: "/v1/auth/login" body: "*"};
   }
   rpc LoginVerify(LoginVerifyRequest) returns (LoginVerifyResponse) {
-    option (google.api.http) = {post: "/v1/auth/login_verify"};
+    option (google.api.http) = {post: "/v1/auth/login_verify" body: "*"};
   }
 }
 

@@ -302,11 +302,11 @@ const file_nomados_vault_v1_vault_proto_rawDesc = "" +
 	"\x06key_id\x18\x02 \x01(\fR\x05keyId\"\x89\x01\n" +
 	"\x19RotateWorkspaceKeyRequest\x12:\n" +
 	"\fworkspace_id\x18\x01 \x01(\v2\x17.nomados.common.v1.UUIDR\vworkspaceId\x120\n" +
-	"\auser_id\x18\x02 \x01(\v2\x17.nomados.common.v1.UUIDR\x06userId2\xb4\x03\n" +
-	"\fVaultService\x12\x97\x01\n" +
-	"\x12DeriveWorkspaceKey\x12+.nomados.vault.v1.DeriveWorkspaceKeyRequest\x1a,.nomados.vault.v1.DeriveWorkspaceKeyResponse\"&\x82\xd3\xe4\x93\x02 \"\x1e/v1/vault/derive_workspace_key\x12\x83\x01\n" +
-	"\rDeriveFileKey\x12&.nomados.vault.v1.DeriveFileKeyRequest\x1a'.nomados.vault.v1.DeriveFileKeyResponse\"!\x82\xd3\xe4\x93\x02\x1b\"\x19/v1/vault/derive_file_key\x12\x83\x01\n" +
-	"\x12RotateWorkspaceKey\x12+.nomados.vault.v1.RotateWorkspaceKeyRequest\x1a\x18.nomados.common.v1.Empty\"&\x82\xd3\xe4\x93\x02 \"\x1e/v1/vault/rotate_workspace_keyB\xd3\x01\n" +
+	"\auser_id\x18\x02 \x01(\v2\x17.nomados.common.v1.UUIDR\x06userId2\xbd\x03\n" +
+	"\fVaultService\x12\x9a\x01\n" +
+	"\x12DeriveWorkspaceKey\x12+.nomados.vault.v1.DeriveWorkspaceKeyRequest\x1a,.nomados.vault.v1.DeriveWorkspaceKeyResponse\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/v1/vault/derive_workspace_key\x12\x86\x01\n" +
+	"\rDeriveFileKey\x12&.nomados.vault.v1.DeriveFileKeyRequest\x1a'.nomados.vault.v1.DeriveFileKeyResponse\"$\x82\xd3\xe4\x93\x02\x1e:\x01*\"\x19/v1/vault/derive_file_key\x12\x86\x01\n" +
+	"\x12RotateWorkspaceKey\x12+.nomados.vault.v1.RotateWorkspaceKeyRequest\x1a\x18.nomados.common.v1.Empty\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/v1/vault/rotate_workspace_keyB\xd3\x01\n" +
 	"\x14com.nomados.vault.v1B\n" +
 	"VaultProtoP\x01ZMgithub.com/nomados/nomados/packages/shared-types/gen/nomados/vault/v1;vaultv1\xa2\x02\x03NVX\xaa\x02\x10Nomados.Vault.V1\xca\x02\x10Nomados\\Vault\\V1\xe2\x02\x1cNomados\\Vault\\V1\\GPBMetadata\xea\x02\x12Nomados::Vault::V1b\x06proto3"
 

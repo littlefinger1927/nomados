@@ -452,12 +452,12 @@ const file_nomados_session_v1_session_proto_rawDesc = "" +
 	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\"N\n" +
 	"\x14RevokeSessionRequest\x126\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\v2\x17.nomados.common.v1.UUIDR\tsessionId2\xf8\x03\n" +
-	"\x0eSessionService\x12y\n" +
-	"\x06Create\x12(.nomados.session.v1.CreateSessionRequest\x1a).nomados.session.v1.CreateSessionResponse\"\x1a\x82\xd3\xe4\x93\x02\x14\"\x12/v1/session/create\x12\x81\x01\n" +
-	"\bValidate\x12*.nomados.session.v1.ValidateSessionRequest\x1a+.nomados.session.v1.ValidateSessionResponse\"\x1c\x82\xd3\xe4\x93\x02\x16\"\x14/v1/session/validate\x12}\n" +
-	"\aRefresh\x12).nomados.session.v1.RefreshSessionRequest\x1a*.nomados.session.v1.RefreshSessionResponse\"\x1b\x82\xd3\xe4\x93\x02\x15\"\x13/v1/session/refresh\x12h\n" +
-	"\x06Revoke\x12(.nomados.session.v1.RevokeSessionRequest\x1a\x18.nomados.common.v1.Empty\"\x1a\x82\xd3\xe4\x93\x02\x14\"\x12/v1/session/revokeB\xe3\x01\n" +
+	"session_id\x18\x01 \x01(\v2\x17.nomados.common.v1.UUIDR\tsessionId2\x85\x04\n" +
+	"\x0eSessionService\x12|\n" +
+	"\x06Create\x12(.nomados.session.v1.CreateSessionRequest\x1a).nomados.session.v1.CreateSessionResponse\"\x1d\x82\xd3\xe4\x93\x02\x17:\x01*\"\x12/v1/session/create\x12\x84\x01\n" +
+	"\bValidate\x12*.nomados.session.v1.ValidateSessionRequest\x1a+.nomados.session.v1.ValidateSessionResponse\"\x1f\x82\xd3\xe4\x93\x02\x19:\x01*\"\x14/v1/session/validate\x12\x80\x01\n" +
+	"\aRefresh\x12).nomados.session.v1.RefreshSessionRequest\x1a*.nomados.session.v1.RefreshSessionResponse\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\"\x13/v1/session/refresh\x12k\n" +
+	"\x06Revoke\x12(.nomados.session.v1.RevokeSessionRequest\x1a\x18.nomados.common.v1.Empty\"\x1d\x82\xd3\xe4\x93\x02\x17:\x01*\"\x12/v1/session/revokeB\xe3\x01\n" +
 	"\x16com.nomados.session.v1B\fSessionProtoP\x01ZQgithub.com/nomados/nomados/packages/shared-types/gen/nomados/session/v1;sessionv1\xa2\x02\x03NSX\xaa\x02\x12Nomados.Session.V1\xca\x02\x12Nomados\\Session\\V1\xe2\x02\x1eNomados\\Session\\V1\\GPBMetadata\xea\x02\x14Nomados::Session::V1b\x06proto3"
 
 var (

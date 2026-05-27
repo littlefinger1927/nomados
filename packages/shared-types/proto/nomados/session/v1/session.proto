@@ -9,16 +9,16 @@ import "google/api/annotations.proto";
 
 service SessionService {
   rpc Create(CreateSessionRequest) returns (CreateSessionResponse) {
-    option (google.api.http) = {post: "/v1/session/create"};
+    option (google.api.http) = {post: "/v1/session/create" body: "*"};
   }
   rpc Validate(ValidateSessionRequest) returns (ValidateSessionResponse) {
-    option (google.api.http) = {post: "/v1/session/validate"};
+    option (google.api.http) = {post: "/v1/session/validate" body: "*"};
   }
   rpc Refresh(RefreshSessionRequest) returns (RefreshSessionResponse) {
-    option (google.api.http) = {post: "/v1/session/refresh"};
+    option (google.api.http) = {post: "/v1/session/refresh" body: "*"};
   }
   rpc Revoke(RevokeSessionRequest) returns (nomados.common.v1.Empty) {
-    option (google.api.http) = {post: "/v1/session/revoke"};
+    option (google.api.http) = {post: "/v1/session/revoke" body: "*"};
   }
 }
 

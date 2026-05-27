@@ -573,12 +573,12 @@ const file_nomados_file_v1_file_proto_rawDesc = "" +
 	"updated_at\x18\x05 \x01(\x03R\tupdatedAt\"\x81\x01\n" +
 	"\x11DeleteFileRequest\x120\n" +
 	"\afile_id\x18\x01 \x01(\v2\x17.nomados.common.v1.UUIDR\x06fileId\x12:\n" +
-	"\fworkspace_id\x18\x02 \x01(\v2\x17.nomados.common.v1.UUIDR\vworkspaceId2\xa8\x03\n" +
-	"\vFileService\x12d\n" +
-	"\x06Upload\x12\x1e.nomados.file.v1.UploadRequest\x1a\x1f.nomados.file.v1.UploadResponse\"\x17\x82\xd3\xe4\x93\x02\x11\"\x0f/v1/file/upload(\x01\x12l\n" +
-	"\bDownload\x12 .nomados.file.v1.DownloadRequest\x1a!.nomados.file.v1.DownloadResponse\"\x19\x82\xd3\xe4\x93\x02\x13\"\x11/v1/file/download0\x01\x12d\n" +
-	"\x04List\x12!.nomados.file.v1.ListFilesRequest\x1a\".nomados.file.v1.ListFilesResponse\"\x15\x82\xd3\xe4\x93\x02\x0f\"\r/v1/file/list\x12_\n" +
-	"\x06Delete\x12\".nomados.file.v1.DeleteFileRequest\x1a\x18.nomados.common.v1.Empty\"\x17\x82\xd3\xe4\x93\x02\x11\"\x0f/v1/file/deleteB\xcb\x01\n" +
+	"\fworkspace_id\x18\x02 \x01(\v2\x17.nomados.common.v1.UUIDR\vworkspaceId2\xb4\x03\n" +
+	"\vFileService\x12g\n" +
+	"\x06Upload\x12\x1e.nomados.file.v1.UploadRequest\x1a\x1f.nomados.file.v1.UploadResponse\"\x1a\x82\xd3\xe4\x93\x02\x14:\x01*\"\x0f/v1/file/upload(\x01\x12o\n" +
+	"\bDownload\x12 .nomados.file.v1.DownloadRequest\x1a!.nomados.file.v1.DownloadResponse\"\x1c\x82\xd3\xe4\x93\x02\x16:\x01*\"\x11/v1/file/download0\x01\x12g\n" +
+	"\x04List\x12!.nomados.file.v1.ListFilesRequest\x1a\".nomados.file.v1.ListFilesResponse\"\x18\x82\xd3\xe4\x93\x02\x12:\x01*\"\r/v1/file/list\x12b\n" +
+	"\x06Delete\x12\".nomados.file.v1.DeleteFileRequest\x1a\x18.nomados.common.v1.Empty\"\x1a\x82\xd3\xe4\x93\x02\x14:\x01*\"\x0f/v1/file/deleteB\xcb\x01\n" +
 	"\x13com.nomados.file.v1B\tFileProtoP\x01ZKgithub.com/nomados/nomados/packages/shared-types/gen/nomados/file/v1;filev1\xa2\x02\x03NFX\xaa\x02\x0fNomados.File.V1\xca\x02\x0fNomados\\File\\V1\xe2\x02\x1bNomados\\File\\V1\\GPBMetadata\xea\x02\x11Nomados::File::V1b\x06proto3"
 
 var (

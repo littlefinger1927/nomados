@@ -16,8 +16,20 @@ const (
 	DeviceIDKey  contextKey = "device_id"
 )
 
+// PublicPaths are routes that don't require authentication.
+var PublicPaths = map[string]bool{
+	"/v1/auth/register":        true,
+	"/v1/auth/register_verify": true,
+	"/v1/auth/login":           true,
+	"/v1/auth/login_verify":    true,
+}
+
 func AuthMiddleware(validator *authsdk.TokenValidator, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if PublicPaths[r.URL.Path] {
+			next.ServeHTTP(w, r)
+			return
+		}
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
 			http.Error(w, "missing authorization header", http.StatusUnauthorized)

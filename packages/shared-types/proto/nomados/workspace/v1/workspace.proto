@@ -9,25 +9,25 @@ import "google/api/annotations.proto";
 
 service WorkspaceService {
   rpc Create(CreateWorkspaceRequest) returns (CreateWorkspaceResponse) {
-    option (google.api.http) = {post: "/v1/workspace/create"};
+    option (google.api.http) = {post: "/v1/workspace/create" body: "*"};
   }
   rpc Get(GetWorkspaceRequest) returns (Workspace) {
-    option (google.api.http) = {post: "/v1/workspace/get"};
+    option (google.api.http) = {post: "/v1/workspace/get" body: "*"};
   }
   rpc List(ListWorkspacesRequest) returns (ListWorkspacesResponse) {
-    option (google.api.http) = {post: "/v1/workspace/list"};
+    option (google.api.http) = {post: "/v1/workspace/list" body: "*"};
   }
   rpc Pause(PauseWorkspaceRequest) returns (Workspace) {
-    option (google.api.http) = {post: "/v1/workspace/pause"};
+    option (google.api.http) = {post: "/v1/workspace/pause" body: "*"};
   }
   rpc Resume(ResumeWorkspaceRequest) returns (Workspace) {
-    option (google.api.http) = {post: "/v1/workspace/resume"};
+    option (google.api.http) = {post: "/v1/workspace/resume" body: "*"};
   }
   rpc Stop(StopWorkspaceRequest) returns (Workspace) {
-    option (google.api.http) = {post: "/v1/workspace/stop"};
+    option (google.api.http) = {post: "/v1/workspace/stop" body: "*"};
   }
   rpc Destroy(DestroyWorkspaceRequest) returns (nomados.common.v1.Empty) {
-    option (google.api.http) = {post: "/v1/workspace/destroy"};
+    option (google.api.http) = {post: "/v1/workspace/destroy" body: "*"};
   }
 }
 

@@ -513,12 +513,12 @@ const file_nomados_auth_v1_auth_proto_rawDesc = "" +
 	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x126\n" +
 	"\n" +
 	"session_id\x18\x03 \x01(\v2\x17.nomados.common.v1.UUIDR\tsessionId\x124\n" +
-	"\tdevice_id\x18\x04 \x01(\v2\x17.nomados.common.v1.UUIDR\bdeviceId2\xd8\x03\n" +
-	"\vAuthService\x12j\n" +
-	"\bRegister\x12 .nomados.auth.v1.RegisterRequest\x1a!.nomados.auth.v1.RegisterResponse\"\x19\x82\xd3\xe4\x93\x02\x13\"\x11/v1/auth/register\x12\x83\x01\n" +
-	"\x0eRegisterVerify\x12&.nomados.auth.v1.RegisterVerifyRequest\x1a'.nomados.auth.v1.RegisterVerifyResponse\" \x82\xd3\xe4\x93\x02\x1a\"\x18/v1/auth/register_verify\x12^\n" +
-	"\x05Login\x12\x1d.nomados.auth.v1.LoginRequest\x1a\x1e.nomados.auth.v1.LoginResponse\"\x16\x82\xd3\xe4\x93\x02\x10\"\x0e/v1/auth/login\x12w\n" +
-	"\vLoginVerify\x12#.nomados.auth.v1.LoginVerifyRequest\x1a$.nomados.auth.v1.LoginVerifyResponse\"\x1d\x82\xd3\xe4\x93\x02\x17\"\x15/v1/auth/login_verifyB\xcb\x01\n" +
+	"\tdevice_id\x18\x04 \x01(\v2\x17.nomados.common.v1.UUIDR\bdeviceId2\xe4\x03\n" +
+	"\vAuthService\x12m\n" +
+	"\bRegister\x12 .nomados.auth.v1.RegisterRequest\x1a!.nomados.auth.v1.RegisterResponse\"\x1c\x82\xd3\xe4\x93\x02\x16:\x01*\"\x11/v1/auth/register\x12\x86\x01\n" +
+	"\x0eRegisterVerify\x12&.nomados.auth.v1.RegisterVerifyRequest\x1a'.nomados.auth.v1.RegisterVerifyResponse\"#\x82\xd3\xe4\x93\x02\x1d:\x01*\"\x18/v1/auth/register_verify\x12a\n" +
+	"\x05Login\x12\x1d.nomados.auth.v1.LoginRequest\x1a\x1e.nomados.auth.v1.LoginResponse\"\x19\x82\xd3\xe4\x93\x02\x13:\x01*\"\x0e/v1/auth/login\x12z\n" +
+	"\vLoginVerify\x12#.nomados.auth.v1.LoginVerifyRequest\x1a$.nomados.auth.v1.LoginVerifyResponse\" \x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/v1/auth/login_verifyB\xcb\x01\n" +
 	"\x13com.nomados.auth.v1B\tAuthProtoP\x01ZKgithub.com/nomados/nomados/packages/shared-types/gen/nomados/auth/v1;authv1\xa2\x02\x03NAX\xaa\x02\x0fNomados.Auth.V1\xca\x02\x0fNomados\\Auth\\V1\xe2\x02\x1bNomados\\Auth\\V1\\GPBMetadata\xea\x02\x11Nomados::Auth::V1b\x06proto3"
 
 var (

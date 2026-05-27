@@ -9,13 +9,13 @@ import "google/api/annotations.proto";
 
 service VaultService {
   rpc DeriveWorkspaceKey(DeriveWorkspaceKeyRequest) returns (DeriveWorkspaceKeyResponse) {
-    option (google.api.http) = {post: "/v1/vault/derive_workspace_key"};
+    option (google.api.http) = {post: "/v1/vault/derive_workspace_key" body: "*"};
   }
   rpc DeriveFileKey(DeriveFileKeyRequest) returns (DeriveFileKeyResponse) {
-    option (google.api.http) = {post: "/v1/vault/derive_file_key"};
+    option (google.api.http) = {post: "/v1/vault/derive_file_key" body: "*"};
   }
   rpc RotateWorkspaceKey(RotateWorkspaceKeyRequest) returns (nomados.common.v1.Empty) {
-    option (google.api.http) = {post: "/v1/vault/rotate_workspace_key"};
+    option (google.api.http) = {post: "/v1/vault/rotate_workspace_key" body: "*"};
   }
 }
 

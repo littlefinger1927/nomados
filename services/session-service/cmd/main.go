@@ -32,7 +32,7 @@ func main() {
 	}
 	signingSecret := os.Getenv("SIGNING_SECRET")
 	if signingSecret == "" {
-		signingSecret = "dev-secret-change-me"
+		signingSecret = "nomados-dev-secret"
 	}
 
 	ctx := context.Background()

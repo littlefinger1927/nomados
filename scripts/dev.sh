@@ -4,11 +4,21 @@ set -e
 NOMADOS_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 COMPOSE_FILE="$NOMADOS_ROOT/infrastructure/docker/docker-compose.yml"
 
+# Shared environment variables
+export DATABASE_URL="postgres://nomados:nomados_dev@localhost:5432/nomados?sslmode=disable"
+export NATS_URL="nats://localhost:4222"
+export SIGNING_SECRET="nomados-dev-secret"
+export MINIO_ENDPOINT="localhost:9000"
+export MINIO_ACCESS_KEY="nomados"
+export MINIO_SECRET_KEY="nomados_dev_key"
+export MINIO_BUCKET="nomados-files"
+export MINIO_USE_SSL="false"
+
 echo "=== NomadOS Development Environment ==="
 echo ""
 
 # Start infrastructure
-echo "[1/4] Starting infrastructure (PostgreSQL, Redis, MinIO, NATS, TURN)..."
+echo "[1/4] Starting infrastructure (PostgreSQL, MinIO, NATS, TURN)..."
 docker compose -f "$COMPOSE_FILE" up -d
 
 echo "Waiting for infrastructure to be healthy..."
@@ -21,7 +31,6 @@ echo "[2/4] Starting Go services..."
 start_service() {
     local name=$1
     local dir=$2
-    shift 2
 
     if [ ! -d "$NOMADOS_ROOT/$dir" ]; then
         echo "  SKIP: $name (directory not found)"
@@ -29,20 +38,19 @@ start_service() {
     fi
 
     echo "  Starting $name..."
-    (cd "$NOMADOS_ROOT/$dir" && go run ./cmd/... "$@") &
+    (cd "$NOMADOS_ROOT/$dir" && go run ./cmd/...) &
     local pid=$!
     echo "  $name started (PID: $pid)"
 }
 
-# Services that need infrastructure
-start_service "auth-service"        "services/auth-service"        &
-start_service "session-service"     "services/session-service"     &
+start_service "auth-service"        "services/auth-service" &
+start_service "session-service"     "services/session-service" &
 start_service "workspace-orchestrator" "services/workspace-orchestrator" &
-start_service "browser-manager"      "services/browser-manager"    &
-start_service "streaming-service"    "services/streaming-service"  &
-start_service "file-service"         "services/file-service"       &
-start_service "vault-service"        "services/vault-service"      &
-start_service "observability"        "services/observability"      &
+start_service "browser-manager"      "services/browser-manager" &
+start_service "streaming-service"    "services/streaming-service" &
+start_service "file-service"         "services/file-service" &
+start_service "vault-service"        "services/vault-service" &
+start_service "observability"        "services/observability" &
 
 # Wait for Go services to start
 sleep 3
@@ -58,7 +66,6 @@ echo "[4/4] Development environment ready."
 echo ""
 echo "NomadOS services are running:"
 echo "  PostgreSQL:     localhost:5432"
-echo "  Redis:          localhost:6379"
 echo "  MinIO:          localhost:9000 (console: localhost:9001)"
 echo "  NATS:           localhost:4222 (monitor: localhost:8222)"
 echo "  TURN:           localhost:3478"

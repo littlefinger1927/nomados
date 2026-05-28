@@ -232,7 +232,7 @@ export default function LoginPage() {
                 label="Username"
                 placeholder="Enter your username"
                 value={username}
-                onChange={(e) => {
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   setUsername(e.target.value);
                   setError(null);
                 }}

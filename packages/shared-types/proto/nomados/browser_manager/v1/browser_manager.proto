@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package nomados.browser_manager.v1;
+
+option go_package = "github.com/nomados/nomados/packages/shared-types/gen/browser_manager/v1";
+
+import "nomados/common/v1/common.proto";
+import "google/api/annotations.proto";
+
+service BrowserManagerService {
+  rpc ListInstances(ListInstancesRequest) returns (ListInstancesResponse) {
+    option (google.api.http) = {post: "/v1/browser_manager/list_instances" body: "*"};
+  }
+  rpc GetInstance(GetInstanceRequest) returns (GetInstanceResponse) {
+    option (google.api.http) = {post: "/v1/browser_manager/get_instance" body: "*"};
+  }
+}
+
+enum InstanceStatus {
+  INSTANCE_STATUS_UNSPECIFIED = 0;
+  INSTANCE_STATUS_STARTING = 1;
+  INSTANCE_STATUS_RUNNING = 2;
+  INSTANCE_STATUS_STOPPED = 3;
+}
+
+message Instance {
+  string workspace_id = 1;
+  InstanceStatus status = 2;
+  int32 chromium_pid = 3;
+  int32 novnc_port = 4;
+  int64 started_at = 5;
+}
+
+message ListInstancesRequest {}
+
+message ListInstancesResponse {
+  repeated Instance instances = 1;
+}
+
+message GetInstanceRequest {
+  nomados.common.v1.UUID workspace_id = 1;
+}
+
+message GetInstanceResponse {
+  Instance instance = 1;
+}

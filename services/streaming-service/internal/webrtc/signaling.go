@@ -2,10 +2,12 @@ package webrtc
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/nats-io/nats.go"
 	"github.com/nomados/nomados/packages/logging"
 	"github.com/nomados/nomados/services/streaming-service/internal/turn"
 )
@@ -45,34 +47,39 @@ type PendingOffer struct {
 	CreatedAt time.Time
 }
 
-// SignalingServer handles WebRTC offer/answer exchange and ICE candidate
-// relay between the Tauri client and the browser runtime.
-type SignalingServer struct {
-	mu             sync.RWMutex
-	pendingOffers  map[string]*PendingOffer // keyed by workspace ID
-	iceCandidates  map[string][]string     // keyed by workspace ID
-	turnRelay      *turn.TURNRelay
-	logger         *logging.Logger
+// ICECandidatePayload represents an ICE candidate relayed via NATS.
+type ICECandidatePayload struct {
+	WorkspaceID   string `json:"workspace_id"`
+	Candidate     string `json:"candidate"`
+	SDPMid        string `json:"sdp_mid"`
+	SDPMlineIndex uint32 `json:"sdp_mline_index"`
 }
 
-// NewSignalingServer creates a new SignalingServer with the given TURN relay.
-func NewSignalingServer(turnRelay *turn.TURNRelay, logger *logging.Logger) *SignalingServer {
+// SignalingServer handles WebRTC offer/answer exchange and ICE candidate
+// relay between the Tauri client and the browser runtime. It uses NATS
+// for distributed signaling and local caches for fast lookups.
+type SignalingServer struct {
+	mu              sync.RWMutex
+	pendingAnswers  map[string]*SignalMessage // keyed by workspace ID
+	nc              *nats.Conn
+	turnRelay       *turn.TURNRelay
+	logger          *logging.Logger
+}
+
+// NewSignalingServer creates a new SignalingServer with the given TURN relay
+// and NATS connection for distributed signaling.
+func NewSignalingServer(turnRelay *turn.TURNRelay, nc *nats.Conn, logger *logging.Logger) *SignalingServer {
 	return &SignalingServer{
-		pendingOffers: make(map[string]*PendingOffer),
-		iceCandidates: make(map[string][]string),
+		pendingAnswers: make(map[string]*SignalMessage),
+		nc:             nc,
 		turnRelay:      turnRelay,
 		logger:         logger,
 	}
 }
 
-// ProcessOffer processes a WebRTC offer from the Tauri client and generates
-// an answer for the browser runtime. In Phase 1, the offer is stored and
-// a placeholder answer is created; full browser peer connection wiring will
-// be completed when browser-manager integration is done.
+// ProcessOffer processes a WebRTC offer from the Tauri client by publishing
+// it to NATS and waiting for an answer from the browser runtime.
 func (s *SignalingServer) ProcessOffer(ctx context.Context, workspaceID, sdp string) (*SignalMessage, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	offer := SignalMessage{
 		Type:        SignalTypeOffer,
 		WorkspaceID: workspaceID,
@@ -80,62 +87,116 @@ func (s *SignalingServer) ProcessOffer(ctx context.Context, workspaceID, sdp str
 		Timestamp:   time.Now().UTC(),
 	}
 
-	// Store the pending offer
-	s.pendingOffers[workspaceID] = &PendingOffer{
-		Offer:     offer,
-		CreatedAt: time.Now().UTC(),
+	offerData, err := json.Marshal(offer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal offer: %w", err)
 	}
 
-	// In Phase 1, generate a placeholder answer signaling message.
-	// The actual WebRTC answer will be generated when the browser peer
-	// connection is fully wired.
-	answer := &SignalMessage{
-		Type:        SignalTypeAnswer,
-		WorkspaceID: workspaceID,
-		SDP:         "", // Will be populated by browser peer connection
-		Timestamp:   time.Now().UTC(),
+	subject := fmt.Sprintf("workspace.%s.offer", workspaceID)
+	answerSubject := fmt.Sprintf("workspace.%s.answer", workspaceID)
+
+	// Subscribe to the answer subject before publishing the offer
+	// to avoid a race condition where the answer arrives before we
+	// start listening.
+	sub, err := s.nc.SubscribeSync(answerSubject)
+	if err != nil {
+		return nil, fmt.Errorf("failed to subscribe to answer subject: %w", err)
+	}
+	defer sub.Unsubscribe()
+
+	// Publish the offer to NATS so browser-manager can pick it up.
+	if err := s.nc.Publish(subject, offerData); err != nil {
+		return nil, fmt.Errorf("failed to publish offer to NATS: %w", err)
+	}
+	s.logger.Info("published offer to NATS", "workspace_id", workspaceID, "subject", subject)
+
+	// Wait for the answer from the browser runtime with a 10-second timeout.
+	// Create a derived context with a 10-second deadline.
+	waitCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	msg, err := sub.NextMsgWithContext(waitCtx)
+	if err != nil {
+		s.logger.Warn("timed out waiting for answer", "workspace_id", workspaceID, "error", err)
+		return nil, fmt.Errorf("timed out waiting for answer for workspace %s: %w", workspaceID, err)
 	}
 
-	s.pendingOffers[workspaceID].Answer = answer
-	s.logger.Info("processed WebRTC offer", "workspace_id", workspaceID)
+	var answer SignalMessage
+	if err := json.Unmarshal(msg.Data, &answer); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal answer: %w", err)
+	}
 
-	return answer, nil
+	// Cache the answer locally for GetAnswer lookups.
+	s.mu.Lock()
+	s.pendingAnswers[workspaceID] = &answer
+	s.mu.Unlock()
+
+	s.logger.Info("received answer from NATS", "workspace_id", workspaceID)
+	return &answer, nil
 }
 
-// ProcessICECandidate relays an ICE candidate between peers.
-// In Phase 1, candidates are stored for later retrieval; the actual
-// relay to the browser peer will be wired in a later phase.
-func (s *SignalingServer) ProcessICECandidate(ctx context.Context, workspaceID, candidate string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+// ProcessICECandidate relays an ICE candidate via NATS to the browser runtime.
+func (s *SignalingServer) ProcessICECandidate(ctx context.Context, workspaceID, candidate, sdpMid string, sdpMlineIndex uint32) error {
+	payload := ICECandidatePayload{
+		WorkspaceID:   workspaceID,
+		Candidate:     candidate,
+		SDPMid:        sdpMid,
+		SDPMlineIndex: sdpMlineIndex,
+	}
 
-	s.iceCandidates[workspaceID] = append(s.iceCandidates[workspaceID], candidate)
-	s.logger.Debug("stored ICE candidate", "workspace_id", workspaceID, "candidate_count", len(s.iceCandidates[workspaceID]))
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal ICE candidate: %w", err)
+	}
 
+	subject := fmt.Sprintf("workspace.%s.ice", workspaceID)
+	if err := s.nc.Publish(subject, data); err != nil {
+		return fmt.Errorf("failed to publish ICE candidate to NATS: %w", err)
+	}
+
+	s.logger.Debug("published ICE candidate to NATS", "workspace_id", workspaceID, "subject", subject)
 	return nil
 }
 
-// GetICECandidates returns all stored ICE candidates for a workspace.
-func (s *SignalingServer) GetICECandidates(workspaceID string) []string {
+// GetAnswer retrieves a cached answer for a workspace. If not found locally,
+// it waits briefly on NATS for an answer to arrive.
+func (s *SignalingServer) GetAnswer(ctx context.Context, workspaceID string) (*SignalMessage, error) {
+	// Check local cache first.
 	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	candidates := s.iceCandidates[workspaceID]
-	result := make([]string, len(candidates))
-	copy(result, candidates)
-	return result
-}
-
-// GetPendingOffer returns the pending offer for a workspace, if any.
-func (s *SignalingServer) GetPendingOffer(workspaceID string) (*PendingOffer, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	offer, exists := s.pendingOffers[workspaceID]
-	if !exists {
-		return nil, fmt.Errorf("no pending offer for workspace %s", workspaceID)
+	if answer, ok := s.pendingAnswers[workspaceID]; ok {
+		s.mu.RUnlock()
+		return answer, nil
 	}
-	return offer, nil
+	s.mu.RUnlock()
+
+	// Not in cache; wait briefly on NATS for an answer.
+	answerSubject := fmt.Sprintf("workspace.%s.answer", workspaceID)
+	sub, err := s.nc.SubscribeSync(answerSubject)
+	if err != nil {
+		return nil, fmt.Errorf("failed to subscribe to answer subject: %w", err)
+	}
+	defer sub.Unsubscribe()
+
+	// Wait up to 5 seconds for an answer.
+	waitCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	msg, err := sub.NextMsgWithContext(waitCtx)
+	if err != nil {
+		return nil, fmt.Errorf("no answer found for workspace %s: %w", workspaceID, err)
+	}
+
+	var answer SignalMessage
+	if err := json.Unmarshal(msg.Data, &answer); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal answer: %w", err)
+	}
+
+	// Cache for future lookups.
+	s.mu.Lock()
+	s.pendingAnswers[workspaceID] = &answer
+	s.mu.Unlock()
+
+	return &answer, nil
 }
 
 // ClearWorkspace removes all signaling state for a workspace.
@@ -143,8 +204,7 @@ func (s *SignalingServer) ClearWorkspace(workspaceID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	delete(s.pendingOffers, workspaceID)
-	delete(s.iceCandidates, workspaceID)
+	delete(s.pendingAnswers, workspaceID)
 	s.logger.Info("cleared signaling state for workspace", "workspace_id", workspaceID)
 }
 

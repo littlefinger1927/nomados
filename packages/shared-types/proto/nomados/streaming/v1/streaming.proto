@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package nomados.streaming.v1;
+
+option go_package = "github.com/nomados/nomados/packages/shared-types/gen/streaming/v1";
+
+import "google/api/annotations.proto";
+
+service StreamingService {
+  rpc ProcessOffer(SignalingRequest) returns (SignalingResponse) {
+    option (google.api.http) = {post: "/v1/streaming/process_offer" body: "*"};
+  }
+  rpc ProcessICECandidate(ICECandidateRequest) returns (ICECandidateResponse) {
+    option (google.api.http) = {post: "/v1/streaming/process_ice_candidate" body: "*"};
+  }
+  rpc GetAnswer(GetAnswerRequest) returns (SignalingResponse) {
+    option (google.api.http) = {post: "/v1/streaming/get_answer" body: "*"};
+  }
+}
+
+message SignalingRequest {
+  string workspace_id = 1;
+  string sdp_offer = 2;
+}
+
+message SignalingResponse {
+  string sdp_answer = 1;
+  string workspace_id = 2;
+}
+
+message ICECandidateRequest {
+  string workspace_id = 1;
+  string candidate = 2;
+  string sdp_mid = 3;
+  uint32 sdp_mline_index = 4;
+}
+
+message ICECandidateResponse {
+  bool success = 1;
+}
+
+message GetAnswerRequest {
+  string workspace_id = 1;
+}

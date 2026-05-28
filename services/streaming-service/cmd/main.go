@@ -9,14 +9,14 @@ import (
 	"syscall"
 
 	"github.com/nomados/nomados/packages/logging"
-	"github.com/nomados/nomados/services/streaming-service/internal/health"
+	"github.com/nomados/nomados/services/streaming-service/internal/handler"
 	"github.com/nomados/nomados/services/streaming-service/internal/nats"
 	"github.com/nomados/nomados/services/streaming-service/internal/relay"
 	"github.com/nomados/nomados/services/streaming-service/internal/turn"
 	"github.com/nomados/nomados/services/streaming-service/internal/webrtc"
+	streamingv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/streaming/v1"
+	natsgo "github.com/nats-io/nats.go"
 	"google.golang.org/grpc"
-	grpchealth "google.golang.org/grpc/health"
-	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 func main() {
@@ -40,13 +40,20 @@ func main() {
 	// Create stream relay
 	streamRelay := relay.NewStreamRelay(logger)
 
-	// Create signaling server
-	_ = webrtc.NewSignalingServer(turnRelay, logger)
-
-	// Connect to NATS and subscribe to workspace events
-	sub, err := nats.NewSubscriber(natsURL, streamRelay, logger)
+	// Connect to NATS for signaling and workspace events
+	natsConn, err := natsgo.Connect(natsURL)
 	if err != nil {
 		log.Fatalf("failed to connect to NATS: %v", err)
+	}
+	defer natsConn.Close()
+
+	// Create signaling server with NATS connection
+	signaling := webrtc.NewSignalingServer(turnRelay, natsConn, logger)
+
+	// Subscribe to workspace events via NATS
+	sub, err := nats.NewSubscriber(natsURL, streamRelay, logger)
+	if err != nil {
+		log.Fatalf("failed to connect to NATS for subscriptions: %v", err)
 	}
 	defer sub.Close()
 
@@ -58,13 +65,9 @@ func main() {
 	// Start gRPC server
 	grpcServer := grpc.NewServer()
 
-	// Register gRPC health server.
-	hs := grpchealth.NewServer()
-	grpc_health_v1.RegisterHealthServer(grpcServer, hs)
-	hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
-
-	// Create health checker for dependency verification.
-	checker := health.NewChecker(sub)
+	// Register the streaming service
+	grpcAdapter := handler.NewStreamingServiceGRPCAdapter(signaling)
+	streamingv1.RegisterStreamingServiceServer(grpcServer, grpcAdapter)
 
 	lis, err := net.Listen("tcp", listenAddr)
 	if err != nil {
@@ -79,9 +82,6 @@ func main() {
 		sig := <-sigCh
 		logger.Info("received shutdown signal", "signal", sig)
 
-		// Mark as NOT_SERVING before stopping.
-		hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
-
 		// Close all active streams
 		streamRelay.CloseAll()
 
@@ -91,13 +91,6 @@ func main() {
 		// Stop gRPC server
 		grpcServer.GracefulStop()
 	}()
-
-	// All dependencies connected — mark as SERVING.
-	if checker.Check(context.Background()) == grpc_health_v1.HealthCheckResponse_SERVING {
-		hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
-	} else {
-		log.Println("warning: health check failed at startup, reporting NOT_SERVING")
-	}
 
 	logger.Info("streaming-service listening", "address", listenAddr)
 	if err := grpcServer.Serve(lis); err != nil {

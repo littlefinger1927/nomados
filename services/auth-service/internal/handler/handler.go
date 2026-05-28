@@ -101,8 +101,8 @@ func (h *AuthServiceHandler) LoginVerify(ctx context.Context, req *authv1.LoginV
 		return nil, fmt.Errorf("invalid user ID: %w", err)
 	}
 
-	// Verify the assertion (stub — always succeeds)
-	if err := verifyAssertionCredential(req.AssertionResponse, nil); err != nil {
+	// Verify the assertion using the service layer (real WebAuthn verification)
+	if err := h.svc.VerifyAssertion(ctx, userID, req.AssertionResponse, req.DeviceSignature); err != nil {
 		return nil, err
 	}
 

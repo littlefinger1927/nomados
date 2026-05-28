@@ -15,7 +15,10 @@ CREATE TABLE devices (
     attestation TEXT,
     trusted BOOLEAN DEFAULT false,
     last_seen TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    credential_id BYTEA,
+    credential_public_key BYTEA,
+    sign_count BIGINT DEFAULT 0
 );
 
 CREATE TABLE sessions (

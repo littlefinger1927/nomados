@@ -1,21 +1,12 @@
 package service
 
 import (
-	"context"
 	"crypto/rand"
 	"testing"
-	"time"
 )
 
-func newTestStore() *MemoryChallengeStore {
-	return NewMemoryChallengeStore()
-}
-
 func TestGenerateRegistrationChallenge(t *testing.T) {
-	store := newTestStore()
-	defer store.Close()
-
-	challenge, err := generateRegistrationChallenge(context.Background(), store, "test-user-id")
+	challenge, err := generateRegistrationChallenge("test-user-id")
 	if err != nil {
 		t.Fatalf("generateRegistrationChallenge failed: %v", err)
 	}
@@ -26,11 +17,8 @@ func TestGenerateRegistrationChallenge(t *testing.T) {
 }
 
 func TestGenerateRegistrationChallengeUniqueness(t *testing.T) {
-	store := newTestStore()
-	defer store.Close()
-
-	ch1, _ := generateRegistrationChallenge(context.Background(), store, "user-1")
-	ch2, _ := generateRegistrationChallenge(context.Background(), store, "user-1")
+	ch1, _ := generateRegistrationChallenge("user-1")
+	ch2, _ := generateRegistrationChallenge("user-1")
 
 	// Challenges should be different (extremely unlikely to collide)
 	same := true
@@ -45,18 +33,8 @@ func TestGenerateRegistrationChallengeUniqueness(t *testing.T) {
 	}
 }
 
-func TestVerifyRegistrationCredential(t *testing.T) {
-	err := verifyRegistrationCredential([]byte("cred"), []byte("challenge"))
-	if err != nil {
-		t.Fatalf("verifyRegistrationCredential stub should always succeed, got: %v", err)
-	}
-}
-
 func TestGenerateAssertionChallenge(t *testing.T) {
-	store := newTestStore()
-	defer store.Close()
-
-	challenge, err := generateAssertionChallenge(context.Background(), store, "test-user-id")
+	challenge, err := generateAssertionChallenge("test-user-id")
 	if err != nil {
 		t.Fatalf("generateAssertionChallenge failed: %v", err)
 	}
@@ -66,19 +44,9 @@ func TestGenerateAssertionChallenge(t *testing.T) {
 	}
 }
 
-func TestVerifyAssertionCredential(t *testing.T) {
-	err := verifyAssertionCredential([]byte("assertion"), []byte("challenge"))
-	if err != nil {
-		t.Fatalf("verifyAssertionCredential stub should always succeed, got: %v", err)
-	}
-}
-
 func TestGenerateAssertionChallengeUniqueness(t *testing.T) {
-	store := newTestStore()
-	defer store.Close()
-
-	ch1, _ := generateAssertionChallenge(context.Background(), store, "user-1")
-	ch2, _ := generateAssertionChallenge(context.Background(), store, "user-1")
+	ch1, _ := generateAssertionChallenge("user-1")
+	ch2, _ := generateAssertionChallenge("user-1")
 
 	same := true
 	for i := range ch1 {
@@ -92,85 +60,111 @@ func TestGenerateAssertionChallengeUniqueness(t *testing.T) {
 	}
 }
 
-func TestMemoryChallengeStore_PutGet(t *testing.T) {
-	store := newTestStore()
-	defer store.Close()
-	ctx := context.Background()
-
-	err := store.Put(ctx, "test-key", "test-value", 5*time.Minute)
-	if err != nil {
-		t.Fatalf("Put failed: %v", err)
+func TestIsDevKey(t *testing.T) {
+	tests := []struct {
+		name      string
+		publicKey []byte
+		expected  bool
+	}{
+		{
+			name:      "dev key prefix",
+			publicKey: []byte("dev:dGVzdA=="),
+			expected:  true,
+		},
+		{
+			name:      "non-dev key",
+			publicKey: []byte("regularkey"),
+			expected:  false,
+		},
+		{
+			name:      "empty key",
+			publicKey: []byte(""),
+			expected:  false,
+		},
 	}
 
-	val, err := store.Get(ctx, "test-key")
-	if err != nil {
-		t.Fatalf("Get failed: %v", err)
-	}
-	if val != "test-value" {
-		t.Errorf("expected 'test-value', got '%s'", val)
-	}
-
-	// Second Get should return empty (one-time use)
-	val2, err := store.Get(ctx, "test-key")
-	if err != nil {
-		t.Fatalf("Get failed: %v", err)
-	}
-	if val2 != "" {
-		t.Errorf("expected empty string on second Get (one-time use), got '%s'", val2)
-	}
-}
-
-func TestMemoryChallengeStore_GetNonExistent(t *testing.T) {
-	store := newTestStore()
-	defer store.Close()
-	ctx := context.Background()
-
-	val, err := store.Get(ctx, "nonexistent")
-	if err != nil {
-		t.Fatalf("Get failed: %v", err)
-	}
-	if val != "" {
-		t.Errorf("expected empty string for nonexistent key, got '%s'", val)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isDevKey(tt.publicKey)
+			if result != tt.expected {
+				t.Errorf("isDevKey(%q) = %v, want %v", tt.publicKey, result, tt.expected)
+			}
+		})
 	}
 }
 
-func TestMemoryChallengeStore_Expired(t *testing.T) {
-	store := newTestStore()
-	defer store.Close()
-	ctx := context.Background()
-
-	err := store.Put(ctx, "expiring-key", "expiring-value", 1*time.Nanosecond)
+func TestVerifyRegistrationCredentialDevBypass(t *testing.T) {
+	// Test dev bypass with valid base64 content
+	devKey := []byte("dev:dGVzdHB1YmxpY2tleQ==")
+	result, err := verifyRegistrationCredentialDevBypass(devKey)
 	if err != nil {
-		t.Fatalf("Put failed: %v", err)
+		t.Fatalf("verifyRegistrationCredentialDevBypass failed: %v", err)
+	}
+	if string(result.CredentialID) != "dev-credential" {
+		t.Errorf("expected dev-credential ID, got %s", string(result.CredentialID))
+	}
+	if result.AttestationType != "none" {
+		t.Errorf("expected 'none' attestation type, got %s", result.AttestationType)
+	}
+}
+
+func TestVerifyAssertionCredentialDevBypass(t *testing.T) {
+	result := verifyAssertionCredentialDevBypass()
+	if string(result.CredentialID) != "dev-credential" {
+		t.Errorf("expected dev-credential ID, got %s", string(result.CredentialID))
+	}
+}
+
+func TestChallengeStore(t *testing.T) {
+	// Test store and retrieve
+	userID := "test-user-123"
+	challenge := make([]byte, 32)
+	if _, err := rand.Read(challenge); err != nil {
+		t.Fatalf("failed to generate challenge: %v", err)
 	}
 
-	// Wait for entry to expire
-	time.Sleep(10 * time.Millisecond)
+	storeChallengeForUser(userID, challenge)
 
-	val, err := store.Get(ctx, "expiring-key")
+	retrieved, err := getChallengeForUser(userID)
 	if err != nil {
-		t.Fatalf("Get failed: %v", err)
+		t.Fatalf("getChallengeForUser failed: %v", err)
 	}
-	if val != "" {
-		t.Errorf("expected empty string for expired key, got '%s'", val)
+
+	if len(retrieved) != len(challenge) {
+		t.Errorf("expected %d bytes, got %d", len(challenge), len(retrieved))
+	}
+
+	for i := range challenge {
+		if challenge[i] != retrieved[i] {
+			t.Error("challenge data mismatch")
+			break
+		}
+	}
+
+	// Challenge should be deleted after retrieval (one-time use)
+	_, err = getChallengeForUser(userID)
+	if err == nil {
+		t.Error("expected challenge to be deleted after retrieval")
+	}
+}
+
+func TestDeviceToCredentials(t *testing.T) {
+	// Test with empty devices
+	creds := deviceToCredentials(nil)
+	if len(creds) != 0 {
+		t.Errorf("expected 0 credentials for nil devices, got %d", len(creds))
 	}
 }
 
 func BenchmarkGenerateRegistrationChallenge(b *testing.B) {
-	store := newTestStore()
-	defer store.Close()
-	ctx := context.Background()
 	for i := 0; i < b.N; i++ {
-		_, _ = generateRegistrationChallenge(ctx, store, "bench-user")
+		_, _ = generateRegistrationChallenge("bench-user")
 	}
 }
 
 func BenchmarkGenerateAssertionChallenge(b *testing.B) {
-	store := newTestStore()
-	defer store.Close()
-	ctx := context.Background()
 	for i := 0; i < b.N; i++ {
-		_, _ = generateAssertionChallenge(ctx, store, "bench-user")
+		_, _ = generateAssertionChallenge("bench-user")
 	}
 }
 

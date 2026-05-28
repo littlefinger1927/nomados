@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	authv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/auth/v1"
 	sessionv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/session/v1"
+	vaultv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/vault/v1"
 	workspacev1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/workspace/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -74,6 +75,17 @@ func newWorkspaceClient(t *testing.T) (workspacev1.WorkspaceServiceClient, *grpc
 		t.Fatalf("failed to connect to workspace service at %s: %v", workspaceServiceAddr, err)
 	}
 	return workspacev1.NewWorkspaceServiceClient(conn), conn
+}
+
+// newVaultClient creates a gRPC client for the vault service.
+// Skips the test if the service is not available.
+func newVaultClient(t *testing.T) (vaultv1.VaultServiceClient, *grpc.ClientConn) {
+	t.Helper()
+	conn, err := grpc.NewClient(vaultServiceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatalf("failed to connect to vault service at %s: %v", vaultServiceAddr, err)
+	}
+	return vaultv1.NewVaultServiceClient(conn), conn
 }
 
 // skipIfServiceUnavailable checks if a gRPC service is reachable.

@@ -9,10 +9,13 @@ import (
 	"syscall"
 
 	"github.com/nomados/nomados/packages/logging"
+	"github.com/nomados/nomados/services/streaming-service/internal/handler"
 	"github.com/nomados/nomados/services/streaming-service/internal/nats"
 	"github.com/nomados/nomados/services/streaming-service/internal/relay"
 	"github.com/nomados/nomados/services/streaming-service/internal/turn"
 	"github.com/nomados/nomados/services/streaming-service/internal/webrtc"
+	streamingv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/streaming/v1"
+	natsgo "github.com/nats-io/nats.go"
 	"google.golang.org/grpc"
 )
 
@@ -37,13 +40,20 @@ func main() {
 	// Create stream relay
 	streamRelay := relay.NewStreamRelay(logger)
 
-	// Create signaling server
-	_ = webrtc.NewSignalingServer(turnRelay, logger)
-
-	// Connect to NATS and subscribe to workspace events
-	sub, err := nats.NewSubscriber(natsURL, streamRelay, logger)
+	// Connect to NATS for signaling and workspace events
+	natsConn, err := natsgo.Connect(natsURL)
 	if err != nil {
 		log.Fatalf("failed to connect to NATS: %v", err)
+	}
+	defer natsConn.Close()
+
+	// Create signaling server with NATS connection
+	signaling := webrtc.NewSignalingServer(turnRelay, natsConn, logger)
+
+	// Subscribe to workspace events via NATS
+	sub, err := nats.NewSubscriber(natsURL, streamRelay, logger)
+	if err != nil {
+		log.Fatalf("failed to connect to NATS for subscriptions: %v", err)
 	}
 	defer sub.Close()
 
@@ -54,6 +64,10 @@ func main() {
 
 	// Start gRPC server
 	grpcServer := grpc.NewServer()
+
+	// Register the streaming service
+	grpcAdapter := handler.NewStreamingServiceGRPCAdapter(signaling)
+	streamingv1.RegisterStreamingServiceServer(grpcServer, grpcAdapter)
 
 	lis, err := net.Listen("tcp", listenAddr)
 	if err != nil {

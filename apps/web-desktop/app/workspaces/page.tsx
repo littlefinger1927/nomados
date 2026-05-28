@@ -397,7 +397,7 @@ export default function WorkspacesPage() {
             label="Workspace Name"
             placeholder="e.g. Development"
             value={newWorkspaceName}
-            onChange={(e) => setNewWorkspaceName(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewWorkspaceName(e.target.value)}
           />
           <div className="flex justify-end gap-2">
             <Button

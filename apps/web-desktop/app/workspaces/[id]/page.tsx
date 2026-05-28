@@ -1,8 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@nomados/ui-components';
+import {
+  WorkspaceConnection,
+  ConnectionState,
+  isWebRTCAvailable,
+} from '@/lib/webrtc';
 
 const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:8080';
 
@@ -61,6 +66,14 @@ export default function WorkspaceDetailPage() {
   const [connecting, setConnecting] = useState(true);
   const [activeTab, setActiveTab] = useState<'files' | 'info'>('info');
 
+  // WebRTC connection state
+  const [webrtcState, setWebrtcState] = useState<ConnectionState>('disconnected');
+  const [connection, setConnection] = useState<WorkspaceConnection | null>(null);
+  const webrtcAvailable = isWebRTCAvailable();
+
+  // Derived state (must be before effects that reference them)
+  const isRunning = workspace?.state === 'Running';
+
   // Fetch workspace data on mount
   useEffect(() => {
     let cancelled = false;
@@ -88,11 +101,43 @@ export default function WorkspaceDetailPage() {
 
   // Simulate connecting to stream when workspace is running
   useEffect(() => {
-    if (workspace?.state === 'Running') {
+    if (isRunning) {
       const timer = setTimeout(() => setConnecting(false), 2000);
       return () => clearTimeout(timer);
     }
-  }, [workspace?.state]);
+  }, [isRunning]);
+
+  // WebRTC connection callback
+  const connectWebRTC = useCallback(async () => {
+    if (!workspace || connection) return;
+
+    const conn = new WorkspaceConnection({
+      workspaceId: workspace.id,
+      onStateChange: setWebrtcState,
+    });
+
+    setConnection(conn);
+    try {
+      await conn.connect();
+    } catch (err) {
+      console.error('WebRTC connection failed, falling back to noVNC:', err);
+      // Fall back to noVNC — the noVNC iframe will still be shown
+    }
+  }, [workspace?.id, connection]);
+
+  // Auto-connect WebRTC when workspace is running and available
+  useEffect(() => {
+    if (isRunning && webrtcAvailable && !connection) {
+      connectWebRTC();
+    }
+  }, [isRunning, webrtcAvailable, connection, connectWebRTC]);
+
+  // Cleanup WebRTC connection on unmount
+  useEffect(() => {
+    return () => {
+      connection?.disconnect();
+    };
+  }, [connection]);
 
   const handleAction = async (action: 'pause' | 'stop' | 'resume' | 'start') => {
     try {
@@ -159,7 +204,6 @@ export default function WorkspaceDetailPage() {
     );
   }
 
-  const isRunning = workspace.state === 'Running';
   const isPaused = workspace.state === 'Paused';
   const isStopped = workspace.state === 'Stopped';
   const isCreating = workspace.state === 'Creating';
@@ -232,32 +276,53 @@ export default function WorkspaceDetailPage() {
             </div>
           )}
           {isRunning && !connecting && (
-            <div className="flex flex-col items-center gap-4 max-w-md text-center px-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-nomados-surface border border-nomados-border">
-                <svg
-                  className="h-8 w-8 text-nomados-primary"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-nomados-text">
-                Stream Viewer
-              </h3>
-              <p className="text-sm text-nomados-text-muted leading-relaxed">
-                The browser stream will connect via WebRTC when the
-                streaming service is available. In Phase 1, this
-                placeholder represents the remote browser viewport.
-              </p>
-              <div className="rounded-lg border border-dashed border-nomados-border px-4 py-3 text-xs text-nomados-text-muted">
-                webrtc://workspace/{workspaceId}/stream
+            <div className="relative w-full h-full flex items-center justify-center">
+              {/* WebRTC status badge */}
+              {webrtcAvailable && (
+                <div className="absolute top-2 right-2 z-10">
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                    webrtcState === 'connected' ? 'bg-green-500/20 text-green-400' :
+                    webrtcState === 'connecting' ? 'bg-yellow-500/20 text-yellow-400' :
+                    webrtcState === 'failed' ? 'bg-red-500/20 text-red-400' :
+                    'bg-gray-500/20 text-gray-400'
+                  }`}>
+                    {webrtcState === 'connected' ? 'WebRTC' :
+                     webrtcState === 'connecting' ? 'Connecting...' :
+                     webrtcState === 'failed' ? 'WebRTC Failed' : 'Disconnected'}
+                  </span>
+                </div>
+              )}
+              <div className="flex flex-col items-center gap-4 max-w-md text-center px-4">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-nomados-surface border border-nomados-border">
+                  <svg
+                    className="h-8 w-8 text-nomados-primary"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-nomados-text">
+                  Stream Viewer
+                </h3>
+                <p className="text-sm text-nomados-text-muted leading-relaxed">
+                  {webrtcState === 'connected'
+                    ? 'Connected via WebRTC. The remote browser stream is active.'
+                    : webrtcState === 'failed'
+                      ? 'WebRTC connection failed. Using noVNC fallback.'
+                      : webrtcState === 'connecting'
+                        ? 'Establishing WebRTC connection to workspace...'
+                        : 'The browser stream will connect via WebRTC when the streaming service is available.'}
+                </p>
+                <div className="rounded-lg border border-dashed border-nomados-border px-4 py-3 text-xs text-nomados-text-muted">
+                  webrtc://workspace/{workspaceId}/stream
+                </div>
               </div>
             </div>
           )}
@@ -376,7 +441,17 @@ export default function WorkspaceDetailPage() {
                     Connection
                   </label>
                   <p className="mt-1 text-sm text-nomados-text-muted">
-                    {isRunning ? 'WebRTC (Phase 2)' : 'Disconnected'}
+                    {isRunning
+                      ? webrtcState === 'connected'
+                        ? 'WebRTC Connected'
+                        : webrtcState === 'connecting'
+                          ? 'WebRTC Connecting...'
+                          : webrtcState === 'failed'
+                            ? 'WebRTC Failed (noVNC fallback)'
+                            : webrtcAvailable
+                              ? 'WebRTC Disconnected'
+                              : 'noVNC (WebRTC unavailable)'
+                      : 'Disconnected'}
                   </p>
                 </div>
               </div>

@@ -77,25 +77,16 @@ func newWorkspaceClient(t *testing.T) (workspacev1.WorkspaceServiceClient, *grpc
 	return workspacev1.NewWorkspaceServiceClient(conn), conn
 }
 
-// newVaultConn creates a gRPC client connection for the vault service.
-func newVaultConn(t *testing.T) *grpc.ClientConn {
+// newVaultClient creates a gRPC client for the vault service.
+// Skips the test if the service is not available.
+func newVaultClient(t *testing.T) (vaultv1.VaultServiceClient, *grpc.ClientConn) {
 	t.Helper()
 	conn, err := grpc.NewClient(vaultServiceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("failed to connect to vault service at %s: %v", vaultServiceAddr, err)
 	}
-	return conn
-}
-
-// newVaultClient creates a gRPC client for the vault service.
-func newVaultClient(t *testing.T) (vaultv1.VaultServiceClient, *grpc.ClientConn) {
-	t.Helper()
-	conn := newVaultConn(t)
 	return vaultv1.NewVaultServiceClient(conn), conn
 }
-
-// unused import guard for vaultv1
-var _ = vaultv1.VaultServiceClient(nil)
 
 // skipIfServiceUnavailable checks if a gRPC service is reachable.
 // If not, it skips the test with a helpful message.

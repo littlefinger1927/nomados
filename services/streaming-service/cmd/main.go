@@ -9,11 +9,14 @@ import (
 	"syscall"
 
 	"github.com/nomados/nomados/packages/logging"
+	"github.com/nomados/nomados/services/streaming-service/internal/health"
 	"github.com/nomados/nomados/services/streaming-service/internal/nats"
 	"github.com/nomados/nomados/services/streaming-service/internal/relay"
 	"github.com/nomados/nomados/services/streaming-service/internal/turn"
 	"github.com/nomados/nomados/services/streaming-service/internal/webrtc"
 	"google.golang.org/grpc"
+	grpchealth "google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 func main() {
@@ -55,6 +58,14 @@ func main() {
 	// Start gRPC server
 	grpcServer := grpc.NewServer()
 
+	// Register gRPC health server.
+	hs := grpchealth.NewServer()
+	grpc_health_v1.RegisterHealthServer(grpcServer, hs)
+	hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
+
+	// Create health checker for dependency verification.
+	checker := health.NewChecker(sub)
+
 	lis, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -68,6 +79,9 @@ func main() {
 		sig := <-sigCh
 		logger.Info("received shutdown signal", "signal", sig)
 
+		// Mark as NOT_SERVING before stopping.
+		hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
+
 		// Close all active streams
 		streamRelay.CloseAll()
 
@@ -77,6 +91,13 @@ func main() {
 		// Stop gRPC server
 		grpcServer.GracefulStop()
 	}()
+
+	// All dependencies connected — mark as SERVING.
+	if checker.Check(context.Background()) == grpc_health_v1.HealthCheckResponse_SERVING {
+		hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
+	} else {
+		log.Println("warning: health check failed at startup, reporting NOT_SERVING")
+	}
 
 	logger.Info("streaming-service listening", "address", listenAddr)
 	if err := grpcServer.Serve(lis); err != nil {

@@ -11,9 +11,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	filev1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/file/v1"
 	"github.com/nomados/nomados/services/file-service/internal/handler"
+	"github.com/nomados/nomados/services/file-service/internal/health"
 	"github.com/nomados/nomados/services/file-service/internal/repository"
 	"github.com/nomados/nomados/services/file-service/internal/storage"
 	"google.golang.org/grpc"
+	grpchealth "google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 func main() {
@@ -87,6 +90,14 @@ func main() {
 	grpcServer := grpc.NewServer()
 	filev1.RegisterFileServiceServer(grpcServer, grpcAdapter)
 
+	// Register gRPC health server.
+	hs := grpchealth.NewServer()
+	grpc_health_v1.RegisterHealthServer(grpcServer, hs)
+	hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
+
+	// Create health checker for dependency verification.
+	checker := health.NewChecker(pool, store)
+
 	lis, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -97,9 +108,19 @@ func main() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		<-sigCh
+
+		// Mark as NOT_SERVING before stopping.
+		hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
 		log.Println("shutting down file-service...")
 		grpcServer.GracefulStop()
 	}()
+
+	// All dependencies connected — mark as SERVING.
+	if checker.Check(context.Background()) == grpc_health_v1.HealthCheckResponse_SERVING {
+		hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
+	} else {
+		log.Println("warning: health check failed at startup, reporting NOT_SERVING")
+	}
 
 	log.Printf("file-service listening on %s", listenAddr)
 	if err := grpcServer.Serve(lis); err != nil {

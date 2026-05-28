@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
 	"os"
@@ -11,9 +12,12 @@ import (
 	"github.com/nomados/nomados/packages/logging"
 	"github.com/nomados/nomados/services/workspace-orchestrator/internal/docker"
 	"github.com/nomados/nomados/services/workspace-orchestrator/internal/handler"
-	"github.com/nomados/nomados/services/workspace-orchestrator/internal/nats"
+	"github.com/nomados/nomados/services/workspace-orchestrator/internal/health"
+	wsnats "github.com/nomados/nomados/services/workspace-orchestrator/internal/nats"
 	"github.com/nomados/nomados/services/workspace-orchestrator/internal/service"
 	"google.golang.org/grpc"
+	grpchealth "google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 func main() {
@@ -34,7 +38,7 @@ func main() {
 	defer dockerClient.Close()
 
 	// Connect to NATS
-	pub, err := nats.NewPublisher(natsURL)
+	pub, err := wsnats.NewPublisher(natsURL)
 	if err != nil {
 		log.Fatalf("failed to connect to NATS: %v", err)
 	}
@@ -49,6 +53,14 @@ func main() {
 	grpcServer := grpc.NewServer()
 	workspacev1.RegisterWorkspaceServiceServer(grpcServer, workspaceHandler)
 
+	// Register gRPC health server.
+	hs := grpchealth.NewServer()
+	grpc_health_v1.RegisterHealthServer(grpcServer, hs)
+	hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
+
+	// Create health checker for dependency verification.
+	checker := health.NewChecker(dockerClient, pub)
+
 	lis, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -58,8 +70,18 @@ func main() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		<-sigCh
+
+		// Mark as NOT_SERVING before stopping.
+		hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
 		grpcServer.GracefulStop()
 	}()
+
+	// All dependencies connected — mark as SERVING.
+	if checker.Check(context.Background()) == grpc_health_v1.HealthCheckResponse_SERVING {
+		hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
+	} else {
+		log.Println("warning: health check failed at startup, reporting NOT_SERVING")
+	}
 
 	log.Printf("workspace-orchestrator listening on %s", listenAddr)
 	if err := grpcServer.Serve(lis); err != nil {

@@ -59,4 +59,4 @@ packages/shared-types/gen/
 __debug_bin*
 
 # Local tooling
-.superpowers/
+.superpowers/.claude/worktrees/

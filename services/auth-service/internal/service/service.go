@@ -18,15 +18,17 @@ type RegistrationResult struct {
 
 // AuthService provides business logic for authentication flows.
 type AuthService struct {
-	repo   *repository.PostgresRepository
-	logger *logging.Logger
+	repo           *repository.PostgresRepository
+	logger         *logging.Logger
+	challengeStore ChallengeStore
 }
 
 // NewAuthService creates a new AuthService.
-func NewAuthService(repo *repository.PostgresRepository) *AuthService {
+func NewAuthService(repo *repository.PostgresRepository, challengeStore ChallengeStore) *AuthService {
 	return &AuthService{
-		repo:   repo,
-		logger: logging.NewLogger("auth-service", nil),
+		repo:           repo,
+		logger:         logging.NewLogger("auth-service", nil),
+		challengeStore: challengeStore,
 	}
 }
 
@@ -51,7 +53,7 @@ func (s *AuthService) Register(ctx context.Context, username string, devicePubli
 	}
 
 	// Generate a WebAuthn registration challenge
-	challenge, err := generateRegistrationChallenge(user.ID.String())
+	challenge, err := generateRegistrationChallenge(ctx, s.challengeStore, user.ID.String())
 	if err != nil {
 		s.logger.Error("failed to generate challenge", "user_id", user.ID, "error", err)
 		return nil, fmt.Errorf("failed to generate challenge: %w", err)
@@ -91,7 +93,7 @@ func (s *AuthService) Login(ctx context.Context, devicePublicKey []byte) (*repos
 	}
 
 	// Generate assertion challenge
-	challenge, err := generateAssertionChallenge(user.ID.String())
+	challenge, err := generateAssertionChallenge(ctx, s.challengeStore, user.ID.String())
 	if err != nil {
 		s.logger.Error("failed to generate assertion challenge", "user_id", user.ID, "error", err)
 		return nil, nil, fmt.Errorf("failed to generate challenge: %w", err)

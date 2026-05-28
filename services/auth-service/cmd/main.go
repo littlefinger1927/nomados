@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 	authv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/auth/v1"
 	sessionv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/session/v1"
 	"github.com/nomados/nomados/services/auth-service/internal/handler"
@@ -31,6 +32,7 @@ func main() {
 	if sessionAddr == "" {
 		sessionAddr = "localhost:50052"
 	}
+	redisURL := os.Getenv("REDIS_URL")
 
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, dbURL)
@@ -52,8 +54,30 @@ func main() {
 
 	sessionClient := sessionv1.NewSessionServiceClient(sessionConn)
 
+	// Set up challenge store: Redis if REDIS_URL is provided, otherwise in-memory.
+	var challengeStore service.ChallengeStore
+	if redisURL != "" {
+		opts, err := redis.ParseURL(redisURL)
+		if err != nil {
+			log.Printf("WARNING: failed to parse REDIS_URL (%s): %v; falling back to in-memory challenge store", redisURL, err)
+			challengeStore = service.NewMemoryChallengeStore()
+		} else {
+			redisClient := redis.NewClient(opts)
+			if err := redisClient.Ping(ctx).Err(); err != nil {
+				log.Printf("WARNING: failed to connect to Redis at %s: %v; falling back to in-memory challenge store", redisURL, err)
+				challengeStore = service.NewMemoryChallengeStore()
+			} else {
+				challengeStore = service.NewRedisChallengeStore(redisClient)
+				log.Printf("using Redis challenge store at %s", redisURL)
+			}
+		}
+	} else {
+		challengeStore = service.NewMemoryChallengeStore()
+		log.Printf("using in-memory challenge store (set REDIS_URL for Redis-backed store)")
+	}
+
 	repo := repository.NewPostgresRepository(pool)
-	svc := service.NewAuthService(repo)
+	svc := service.NewAuthService(repo, challengeStore)
 	authHandler := handler.NewAuthServiceHandler(svc, sessionClient)
 
 	grpcServer := grpc.NewServer()

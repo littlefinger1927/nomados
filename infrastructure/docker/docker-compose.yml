@@ -58,7 +58,20 @@ services:
       - ./turn/turnserver.conf:/etc/turnserver.conf
     command: ["-c", "/etc/turnserver.conf"]
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis_data:/data
+
 volumes:
   postgres_data:
   minio_data:
   nats_data:
+  redis_data:

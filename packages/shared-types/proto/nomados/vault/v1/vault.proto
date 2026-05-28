@@ -22,6 +22,7 @@ service VaultService {
 message DeriveWorkspaceKeyRequest {
   nomados.common.v1.UUID user_id = 1;
   nomados.common.v1.UUID workspace_id = 2;
+  bytes master_key = 3;
 }
 
 message DeriveWorkspaceKeyResponse {
@@ -32,6 +33,7 @@ message DeriveWorkspaceKeyResponse {
 message DeriveFileKeyRequest {
   nomados.common.v1.UUID workspace_id = 1;
   nomados.common.v1.UUID file_id = 2;
+  bytes master_key = 3;
 }
 
 message DeriveFileKeyResponse {
@@ -42,4 +44,5 @@ message DeriveFileKeyResponse {
 message RotateWorkspaceKeyRequest {
   nomados.common.v1.UUID workspace_id = 1;
   nomados.common.v1.UUID user_id = 2;
+  bytes master_key = 3;
 }

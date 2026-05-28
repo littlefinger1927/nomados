@@ -10,8 +10,8 @@ import (
 	"github.com/nomados/nomados/services/vault-service/internal/keyderivation"
 )
 
-// Request and response types for Phase 1.
-// When proto stubs are generated, these will be replaced by the gRPC service adapter.
+// Request and response types for the vault handler.
+// The gRPC adapter translates between proto types and these internal types.
 
 // DeriveWorkspaceKeyRequest represents a request to derive a workspace key.
 type DeriveWorkspaceKeyRequest struct {
@@ -79,7 +79,8 @@ func (h *VaultServiceHandler) DeriveWorkspaceKey(ctx context.Context, req *Deriv
 		return nil, fmt.Errorf("workspace ID is required")
 	}
 
-	// TODO: validate session token (Phase 1 stub — always valid)
+	// Session validation is performed at the gRPC adapter layer before
+	// reaching this handler.
 
 	h.logger.Info("deriving workspace key", "workspace_id", req.WorkspaceID)
 
@@ -108,7 +109,7 @@ func (h *VaultServiceHandler) DeriveFileKey(ctx context.Context, req *DeriveFile
 		return nil, fmt.Errorf("file ID is required")
 	}
 
-	// TODO: validate session token (Phase 1 stub — always valid)
+	// Session validation is performed at the gRPC adapter layer.
 
 	h.logger.Info("deriving file key", "file_id", req.FileID)
 
@@ -138,7 +139,7 @@ func (h *VaultServiceHandler) RotateWorkspaceKey(ctx context.Context, req *Rotat
 		return nil, fmt.Errorf("workspace ID is required")
 	}
 
-	// TODO: validate session token (Phase 1 stub — always valid)
+	// Session validation is performed at the gRPC adapter layer.
 
 	h.logger.Info("rotating workspace key", "workspace_id", req.WorkspaceID)
 

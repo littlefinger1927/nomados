@@ -12,6 +12,7 @@ import (
 	"github.com/nomados/nomados/services/vault-service/internal/handler"
 	vaultnats "github.com/nomados/nomados/services/vault-service/internal/nats"
 	"github.com/nomados/nomados/services/vault-service/internal/keyderivation"
+	"github.com/nomados/nomados/services/vault-service/internal/service"
 	"google.golang.org/grpc"
 )
 
@@ -26,6 +27,12 @@ func main() {
 	listenAddr := os.Getenv("VAULT_SERVICE_ADDR")
 	if listenAddr == "" {
 		listenAddr = ":50057"
+	}
+
+	// Session service address for token validation.
+	sessionAddr := os.Getenv("SESSION_SERVICE_ADDR")
+	if sessionAddr == "" {
+		sessionAddr = "localhost:50052"
 	}
 
 	// Initialize logger.
@@ -47,9 +54,16 @@ func main() {
 		defer publisher.Close()
 	}
 
+	// Initialize session validator for authenticating requests.
+	sessionValidator, err := service.NewSessionValidator(sessionAddr)
+	if err != nil {
+		log.Fatalf("failed to initialize session validator: %v", err)
+	}
+	defer sessionValidator.Close()
+
 	// Initialize handler and gRPC adapter.
 	vaultHandler := handler.NewVaultServiceHandler(kd, publisher, logger)
-	grpcAdapter := handler.NewVaultServiceGRPCAdapter(vaultHandler)
+	grpcAdapter := handler.NewVaultServiceGRPCAdapter(vaultHandler, sessionValidator)
 
 	// Set up gRPC server.
 	grpcServer := grpc.NewServer()

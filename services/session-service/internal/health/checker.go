@@ -1,0 +1,33 @@
+package health
+
+import (
+	"context"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/grpc/health/grpc_health_v1"
+)
+
+// Checker performs health checks for the session-service dependencies.
+type Checker struct {
+	pool *pgxpool.Pool
+}
+
+// NewChecker creates a new health Checker with the given PostgreSQL connection pool.
+func NewChecker(pool *pgxpool.Pool) *Checker {
+	return &Checker{pool: pool}
+}
+
+// Check verifies that all dependencies are reachable.
+// Returns SERVING if all checks pass, NOT_SERVING otherwise.
+func (c *Checker) Check(ctx context.Context) grpc_health_v1.HealthCheckResponse_ServingStatus {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	// Check PostgreSQL connectivity.
+	if err := c.pool.Ping(ctx); err != nil {
+		return grpc_health_v1.HealthCheckResponse_NOT_SERVING
+	}
+
+	return grpc_health_v1.HealthCheckResponse_SERVING
+}

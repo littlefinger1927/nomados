@@ -48,6 +48,11 @@ func (p *Publisher) PublishKeyRotated(ctx context.Context, workspaceID, keyID st
 	return nil
 }
 
+// IsConnected returns whether the NATS connection is still active.
+func (p *Publisher) IsConnected() bool {
+	return p.conn != nil && p.conn.IsConnected()
+}
+
 // Close closes the NATS connection.
 func (p *Publisher) Close() {
 	if p.conn != nil {

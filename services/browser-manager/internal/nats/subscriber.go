@@ -126,6 +126,11 @@ func (s *Subscriber) SubscribeAll(ctx context.Context) error {
 	return nil
 }
 
+// IsConnected returns whether the NATS connection is still active.
+func (s *Subscriber) IsConnected() bool {
+	return s.conn != nil && s.conn.IsConnected()
+}
+
 // Close unsubscribes from all subjects and closes the NATS connection.
 func (s *Subscriber) Close() {
 	for _, sub := range s.subs {

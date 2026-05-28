@@ -20,6 +20,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/nomados/nomados/services/gateway-service/internal/config"
+	gwhealth "github.com/nomados/nomados/services/gateway-service/internal/health"
 	"github.com/nomados/nomados/services/gateway-service/internal/middleware"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -81,6 +82,15 @@ func main() {
 		log.Fatalf("failed to register vault handler: %v", err)
 	}
 
+	// Set up health checker for downstream services.
+	healthChecker := gwhealth.NewChecker([]gwhealth.BackendConfig{
+		{Name: "auth", Addr: cfg.AuthAddr},
+		{Name: "session", Addr: cfg.SessionAddr},
+		{Name: "workspace", Addr: cfg.WorkspaceAddr},
+		{Name: "file", Addr: cfg.FileAddr},
+		{Name: "vault", Addr: cfg.VaultAddr},
+	})
+
 	// Set up middleware.
 	validator := authsdk.NewTokenValidator(cfg.SigningSecret)
 	rateLimiter := middleware.NewIPRateLimiter(cfg.RateLimitRPS, cfg.RateLimitBurst)
@@ -88,9 +98,23 @@ func main() {
 	// Wire middleware chain: rate limit -> auth -> grpc-gateway mux.
 	handler := middleware.RateLimitMiddleware(rateLimiter, middleware.AuthMiddleware(validator, mux))
 
+	// Add /health endpoint.
+	httpHandler := http.NewServeMux()
+	httpHandler.Handle("/health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		status := healthChecker.Check(r.Context())
+		if status == "SERVING" {
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintln(w, `{"status":"SERVING"}`)
+		} else {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			fmt.Fprintln(w, `{"status":"NOT_SERVING"}`)
+		}
+	}))
+	httpHandler.Handle("/", handler)
+
 	srv := &http.Server{
 		Addr:         cfg.ListenAddr,
-		Handler:      handler,
+		Handler:      httpHandler,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,

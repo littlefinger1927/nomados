@@ -12,10 +12,13 @@ import (
 	authv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/auth/v1"
 	sessionv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/session/v1"
 	"github.com/nomados/nomados/services/auth-service/internal/handler"
+	"github.com/nomados/nomados/services/auth-service/internal/health"
 	"github.com/nomados/nomados/services/auth-service/internal/repository"
 	"github.com/nomados/nomados/services/auth-service/internal/service"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	grpchealth "google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 func main() {
@@ -31,6 +34,7 @@ func main() {
 	if sessionAddr == "" {
 		sessionAddr = "localhost:50052"
 	}
+	redisURL := os.Getenv("REDIS_URL")
 
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, dbURL)
@@ -59,6 +63,14 @@ func main() {
 	grpcServer := grpc.NewServer()
 	authv1.RegisterAuthServiceServer(grpcServer, authHandler)
 
+	// Register gRPC health server.
+	hs := grpchealth.NewServer()
+	grpc_health_v1.RegisterHealthServer(grpcServer, hs)
+	hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
+
+	// Create health checker for dependency verification.
+	checker := health.NewChecker(pool, health.WithRedisURL(redisURL))
+
 	lis, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -68,8 +80,18 @@ func main() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		<-sigCh
+
+		// Mark as NOT_SERVING before stopping.
+		hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
 		grpcServer.GracefulStop()
 	}()
+
+	// All dependencies connected — mark as SERVING.
+	if checker.Check(context.Background()) == grpc_health_v1.HealthCheckResponse_SERVING {
+		hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
+	} else {
+		log.Println("warning: health check failed at startup, reporting NOT_SERVING")
+	}
 
 	log.Printf("auth-service listening on %s", listenAddr)
 	if err := grpcServer.Serve(lis); err != nil {

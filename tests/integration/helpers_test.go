@@ -15,10 +15,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	authsdk "github.com/nomados/nomados/packages/auth-sdk"
 	authv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/auth/v1"
-	filev1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/file/v1"
 	sessionv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/session/v1"
+	vaultv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/vault/v1"
 	workspacev1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/workspace/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -35,9 +34,7 @@ var (
 	sessionServiceAddr   = envOr("SESSION_SERVICE_ADDR", "localhost:50052")
 	workspaceServiceAddr = envOr("WORKSPACE_SERVICE_ADDR", "localhost:50053")
 	vaultServiceAddr     = envOr("VAULT_SERVICE_ADDR", "localhost:50057")
-	fileServiceAddr      = envOr("FILE_SERVICE_ADDR", "localhost:50056")
 	gatewayAddr          = envOr("GATEWAY_ADDR", "localhost:8080")
-	gatewayBaseURL       = envOr("GATEWAY_BASE_URL", "http://localhost:8080")
 )
 
 func envOr(key, fallback string) string {
@@ -80,23 +77,25 @@ func newWorkspaceClient(t *testing.T) (workspacev1.WorkspaceServiceClient, *grpc
 	return workspacev1.NewWorkspaceServiceClient(conn), conn
 }
 
-// newFileClient creates a gRPC client for the file service.
-func newFileClient(t *testing.T) (filev1.FileServiceClient, *grpc.ClientConn) {
+// newVaultConn creates a gRPC client connection for the vault service.
+func newVaultConn(t *testing.T) *grpc.ClientConn {
 	t.Helper()
-	conn, err := grpc.NewClient(fileServiceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(vaultServiceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		t.Fatalf("failed to connect to file service at %s: %v", fileServiceAddr, err)
+		t.Fatalf("failed to connect to vault service at %s: %v", vaultServiceAddr, err)
 	}
-	return filev1.NewFileServiceClient(conn), conn
+	return conn
 }
 
-// generateAccessToken creates a valid JWT access token for integration tests
-// using the dev signing secret. This bypasses the auth service for tests
-// that need an authenticated context.
-func generateAccessToken(userID, sessionID, deviceID string) (string, error) {
-	validator := authsdk.NewTokenValidator("nomados-dev-secret")
-	return validator.GenerateAccessToken(userID, sessionID, deviceID, 5*time.Minute)
+// newVaultClient creates a gRPC client for the vault service.
+func newVaultClient(t *testing.T) (vaultv1.VaultServiceClient, *grpc.ClientConn) {
+	t.Helper()
+	conn := newVaultConn(t)
+	return vaultv1.NewVaultServiceClient(conn), conn
 }
+
+// unused import guard for vaultv1
+var _ = vaultv1.VaultServiceClient(nil)
 
 // skipIfServiceUnavailable checks if a gRPC service is reachable.
 // If not, it skips the test with a helpful message.

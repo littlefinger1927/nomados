@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	sessionv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/session/v1"
@@ -45,8 +46,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
-	defer pool.Close()
-
 	if err := pool.Ping(ctx); err != nil {
 		log.Fatalf("failed to ping database: %v", err)
 	}
@@ -56,8 +55,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect to NATS: %v", err)
 	}
-	defer pub.Close()
-
 	// Create services
 	repo := repository.NewPostgresRepository(pool)
 	svc := service.NewSessionService(repo, pub, signingSecret)
@@ -80,14 +77,11 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
+	// Start gRPC server in a goroutine.
 	go func() {
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-		<-sigCh
-
-		// Mark as NOT_SERVING before stopping.
-		hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
-		grpcServer.GracefulStop()
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatalf("failed to serve: %v", err)
+		}
 	}()
 
 	// All dependencies connected — mark as SERVING.
@@ -98,7 +92,40 @@ func main() {
 	}
 
 	log.Printf("session-service listening on %s", listenAddr)
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+
+	// Wait for shutdown signal.
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-quit
+	log.Printf("received %s, shutting down...", sig)
+
+	// Mark as NOT_SERVING before stopping.
+	hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
+
+	// Shutdown with timeout.
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+
+	// Stop accepting new requests with timeout enforcement.
+	done := make(chan struct{})
+	go func() {
+		grpcServer.GracefulStop()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		log.Println("graceful stop completed")
+	case <-shutdownCtx.Done():
+		log.Println("shutdown timeout exceeded, forcing stop")
+		grpcServer.Stop()
 	}
+
+	// Close resources explicitly.
+	log.Println("closing NATS publisher...")
+	pub.Close()
+	log.Println("closing database connection...")
+	pool.Close()
+
+	log.Println("shutdown complete")
 }

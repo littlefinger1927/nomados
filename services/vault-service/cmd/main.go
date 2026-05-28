@@ -1,17 +1,19 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
-	vaultv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/vault/v1"
 	"github.com/nomados/nomados/packages/logging"
+	vaultv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/vault/v1"
 	"github.com/nomados/nomados/services/vault-service/internal/handler"
-	vaultnats "github.com/nomados/nomados/services/vault-service/internal/nats"
 	"github.com/nomados/nomados/services/vault-service/internal/keyderivation"
+	vaultnats "github.com/nomados/nomados/services/vault-service/internal/nats"
 	"github.com/nomados/nomados/services/vault-service/internal/service"
 	"google.golang.org/grpc"
 )
@@ -50,9 +52,6 @@ func main() {
 	} else {
 		log.Println("connected to NATS")
 	}
-	if publisher != nil {
-		defer publisher.Close()
-	}
 
 	// Initialize session validator for authenticating requests.
 	sessionValidator, err := service.NewSessionValidator(sessionAddr)
@@ -74,18 +73,46 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	// Graceful shutdown.
+	// Start gRPC server in a goroutine.
 	go func() {
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-		<-sigCh
-		log.Println("shutting down vault-service...")
-		grpcServer.GracefulStop()
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatalf("failed to serve: %v", err)
+		}
 	}()
 
 	logger.Info("vault-service starting", "addr", listenAddr)
 	log.Printf("vault-service listening on %s", listenAddr)
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+
+	// Wait for shutdown signal.
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-quit
+	log.Printf("received %s, shutting down...", sig)
+
+	// Shutdown with timeout.
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+
+	// Stop accepting new requests with timeout enforcement.
+	done := make(chan struct{})
+	go func() {
+		grpcServer.GracefulStop()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		log.Println("graceful stop completed")
+	case <-shutdownCtx.Done():
+		log.Println("shutdown timeout exceeded, forcing stop")
+		grpcServer.Stop()
 	}
+
+	// Close resources explicitly (nil-safe publisher close).
+	if publisher != nil {
+		log.Println("closing NATS publisher...")
+		publisher.Close()
+	}
+
+	log.Println("shutdown complete")
 }

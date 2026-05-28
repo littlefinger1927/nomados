@@ -7,15 +7,16 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/redis/go-redis/v9"
 	authv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/auth/v1"
 	sessionv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/session/v1"
 	"github.com/nomados/nomados/services/auth-service/internal/handler"
 	"github.com/nomados/nomados/services/auth-service/internal/health"
 	"github.com/nomados/nomados/services/auth-service/internal/repository"
 	"github.com/nomados/nomados/services/auth-service/internal/service"
+	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	grpchealth "google.golang.org/grpc/health"
@@ -42,8 +43,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
-	defer pool.Close()
-
 	if err := pool.Ping(ctx); err != nil {
 		log.Fatalf("failed to ping database: %v", err)
 	}
@@ -53,8 +52,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect to session service at %s: %v", sessionAddr, err)
 	}
-	defer sessionConn.Close()
-
 	sessionClient := sessionv1.NewSessionServiceClient(sessionConn)
 
 	// Set up challenge store: Redis if REDIS_URL is provided, otherwise in-memory.
@@ -99,14 +96,11 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
+	// Start gRPC server in a goroutine.
 	go func() {
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-		<-sigCh
-
-		// Mark as NOT_SERVING before stopping.
-		hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
-		grpcServer.GracefulStop()
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatalf("failed to serve: %v", err)
+		}
 	}()
 
 	// All dependencies connected — mark as SERVING.
@@ -117,7 +111,40 @@ func main() {
 	}
 
 	log.Printf("auth-service listening on %s", listenAddr)
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+
+	// Wait for shutdown signal.
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-quit
+	log.Printf("received %s, shutting down...", sig)
+
+	// Mark as NOT_SERVING before stopping.
+	hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
+
+	// Shutdown with timeout.
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+
+	// Stop accepting new requests with timeout enforcement.
+	done := make(chan struct{})
+	go func() {
+		grpcServer.GracefulStop()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		log.Println("graceful stop completed")
+	case <-shutdownCtx.Done():
+		log.Println("shutdown timeout exceeded, forcing stop")
+		grpcServer.Stop()
 	}
+
+	// Close resources explicitly.
+	log.Println("closing session service connection...")
+	sessionConn.Close()
+	log.Println("closing database connection...")
+	pool.Close()
+
+	log.Println("shutdown complete")
 }

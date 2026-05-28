@@ -7,9 +7,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
-	workspacev1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/workspace/v1"
 	"github.com/nomados/nomados/packages/logging"
+	workspacev1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/workspace/v1"
 	"github.com/nomados/nomados/services/workspace-orchestrator/internal/docker"
 	"github.com/nomados/nomados/services/workspace-orchestrator/internal/handler"
 	"github.com/nomados/nomados/services/workspace-orchestrator/internal/health"
@@ -35,15 +36,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect to Docker: %v", err)
 	}
-	defer dockerClient.Close()
-
 	// Connect to NATS
 	pub, err := wsnats.NewPublisher(natsURL)
 	if err != nil {
 		log.Fatalf("failed to connect to NATS: %v", err)
 	}
-	defer pub.Close()
-
 	// Create services
 	logger := logging.NewLogger("workspace-orchestrator", nil)
 	svc := service.NewWorkspaceService(dockerClient, logger, pub)
@@ -66,14 +63,11 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
+	// Start gRPC server in a goroutine.
 	go func() {
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-		<-sigCh
-
-		// Mark as NOT_SERVING before stopping.
-		hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
-		grpcServer.GracefulStop()
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatalf("failed to serve: %v", err)
+		}
 	}()
 
 	// All dependencies connected — mark as SERVING.
@@ -84,7 +78,40 @@ func main() {
 	}
 
 	log.Printf("workspace-orchestrator listening on %s", listenAddr)
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+
+	// Wait for shutdown signal.
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-quit
+	log.Printf("received %s, shutting down...", sig)
+
+	// Mark as NOT_SERVING before stopping.
+	hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
+
+	// Shutdown with timeout (15s for slow container operations).
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer shutdownCancel()
+
+	// Stop accepting new requests with timeout enforcement.
+	done := make(chan struct{})
+	go func() {
+		grpcServer.GracefulStop()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		log.Println("graceful stop completed")
+	case <-shutdownCtx.Done():
+		log.Println("shutdown timeout exceeded, forcing stop")
+		grpcServer.Stop()
 	}
+
+	// Close resources explicitly.
+	log.Println("closing NATS publisher...")
+	pub.Close()
+	log.Println("closing Docker client...")
+	dockerClient.Close()
+
+	log.Println("shutdown complete")
 }

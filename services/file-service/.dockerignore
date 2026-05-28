@@ -1,0 +1,6 @@
+*.test
+*.md
+.git
+.gitignore
+docker
+Dockerfile

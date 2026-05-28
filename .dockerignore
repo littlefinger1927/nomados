@@ -1,0 +1,44 @@
+# Git and CI
+.git
+.github
+.claude
+
+# Documentation
+*.md
+docs/
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Infrastructure configs (not needed in app builds)
+infrastructure/docker/postgres/
+infrastructure/docker/turn/
+infrastructure/docker/*.yml
+
+# Test artifacts
+tests/
+*.test
+*_test.go
+
+# Local dev files
+.env
+.env.*
+!.env.example
+
+# Build artifacts
+node_modules
+.next
+dist
+out
+
+# Docker files (prevent recursion)
+services/*/Dockerfile
+apps/*/Dockerfile
+
+# Tests integration project
+tests/integration/

@@ -3,10 +3,15 @@ package handler
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	commonv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/common/v1"
 	vaultv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/vault/v1"
 	"github.com/nomados/nomados/services/vault-service/internal/keyderivation"
+	"github.com/nomados/nomados/services/vault-service/internal/service"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 // VaultServiceGRPCAdapter wraps VaultServiceHandler and implements the
@@ -14,42 +19,68 @@ import (
 // proto request/response types and the existing handler's struct types.
 type VaultServiceGRPCAdapter struct {
 	vaultv1.UnimplementedVaultServiceServer
-	handler *VaultServiceHandler
+	handler          *VaultServiceHandler
+	sessionValidator *service.SessionValidator
 }
 
 // NewVaultServiceGRPCAdapter creates a new VaultServiceGRPCAdapter.
-func NewVaultServiceGRPCAdapter(handler *VaultServiceHandler) *VaultServiceGRPCAdapter {
+func NewVaultServiceGRPCAdapter(handler *VaultServiceHandler, sessionValidator *service.SessionValidator) *VaultServiceGRPCAdapter {
 	return &VaultServiceGRPCAdapter{
-		handler: handler,
+		handler:          handler,
+		sessionValidator: sessionValidator,
 	}
 }
 
-// DeriveWorkspaceKey handles the DeriveWorkspaceKey RPC.
-// The proto takes user_id and workspace_id as UUIDs. The vault service
-// derives the key from the master key, but the proto does not carry the
-// master key — the client encrypts and sends it out-of-band. For Phase 1,
-// we derive from the workspace_id bytes as a placeholder context.
-func (a *VaultServiceGRPCAdapter) DeriveWorkspaceKey(ctx context.Context, req *vaultv1.DeriveWorkspaceKeyRequest) (*vaultv1.DeriveWorkspaceKeyResponse, error) {
-	workspaceID := req.GetWorkspaceId().GetValue()
-	if workspaceID == "" {
-		return nil, fmt.Errorf("workspace ID is required")
+// extractSessionToken extracts the session token from gRPC metadata.
+// It looks for an "authorization" metadata entry with a "Bearer" prefix.
+func extractSessionToken(ctx context.Context) (string, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return "", fmt.Errorf("no metadata in context")
 	}
-	userID := req.GetUserId().GetValue()
-	if userID == "" {
-		return nil, fmt.Errorf("user ID is required")
+	tokens := md.Get("authorization")
+	if len(tokens) == 0 {
+		return "", fmt.Errorf("no authorization header")
+	}
+	token := strings.TrimPrefix(tokens[0], "Bearer ")
+	if token == tokens[0] {
+		// No "Bearer " prefix was present; use the raw value.
+		return tokens[0], nil
+	}
+	return token, nil
+}
+
+// DeriveWorkspaceKey handles the DeriveWorkspaceKey RPC.
+// It validates the session token from gRPC metadata, then uses the
+// client-provided master key to derive a workspace key.
+func (a *VaultServiceGRPCAdapter) DeriveWorkspaceKey(ctx context.Context, req *vaultv1.DeriveWorkspaceKeyRequest) (*vaultv1.DeriveWorkspaceKeyResponse, error) {
+	// Validate session token from gRPC metadata.
+	sessionToken, err := extractSessionToken(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "session token required")
+	}
+	_, err = a.sessionValidator.Validate(ctx, sessionToken)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "invalid session: "+err.Error())
 	}
 
-	// For Phase 1, derive the workspace key using the user_id as the
-	// master key input (this is a placeholder — real implementation will
-	// receive the master key from the client via a secure channel).
-	masterKey := []byte(userID)
+	workspaceID := req.GetWorkspaceId().GetValue()
+	if workspaceID == "" {
+		return nil, status.Error(codes.InvalidArgument, "workspace ID is required")
+	}
+
+	// Use client-provided master key instead of placeholder.
+	masterKey := req.GetMasterKey()
+	if len(masterKey) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "master key is required")
+	}
 
 	result, err := a.handler.DeriveWorkspaceKey(ctx, &DeriveWorkspaceKeyRequest{
 		MasterKey:   masterKey,
 		WorkspaceID: workspaceID,
 	})
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "failed to derive workspace key: %v", err)
 	}
 
 	// Generate a key ID for tracking.
@@ -62,27 +93,50 @@ func (a *VaultServiceGRPCAdapter) DeriveWorkspaceKey(ctx context.Context, req *v
 }
 
 // DeriveFileKey handles the DeriveFileKey RPC.
+// It validates the session token, then derives a file key using the
+// client-provided master key to first derive the workspace key.
 func (a *VaultServiceGRPCAdapter) DeriveFileKey(ctx context.Context, req *vaultv1.DeriveFileKeyRequest) (*vaultv1.DeriveFileKeyResponse, error) {
+	// Validate session token from gRPC metadata.
+	sessionToken, err := extractSessionToken(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "session token required")
+	}
+	_, err = a.sessionValidator.Validate(ctx, sessionToken)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "invalid session: "+err.Error())
+	}
+
 	workspaceID := req.GetWorkspaceId().GetValue()
 	fileID := req.GetFileId().GetValue()
 
 	if workspaceID == "" {
-		return nil, fmt.Errorf("workspace ID is required")
+		return nil, status.Error(codes.InvalidArgument, "workspace ID is required")
 	}
 	if fileID == "" {
-		return nil, fmt.Errorf("file ID is required")
+		return nil, status.Error(codes.InvalidArgument, "file ID is required")
 	}
 
-	// For Phase 1, derive the workspace key first from workspace_id as context,
-	// then derive the file key. The workspace key acts as the parent key.
-	workspaceKeyCtx := keyderivation.DeriveWorkspaceKeyContext(workspaceID)
+	// Use client-provided master key instead of deriving from workspace_id context.
+	masterKey := req.GetMasterKey()
+	if len(masterKey) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "master key is required")
+	}
+
+	// Derive workspace key from master key, then derive file key from it.
+	workspaceKeyResult, err := a.handler.DeriveWorkspaceKey(ctx, &DeriveWorkspaceKeyRequest{
+		MasterKey:   masterKey,
+		WorkspaceID: workspaceID,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to derive workspace key for file key: %v", err)
+	}
 
 	result, err := a.handler.DeriveFileKey(ctx, &DeriveFileKeyRequest{
-		WorkspaceKey: workspaceKeyCtx,
+		WorkspaceKey: workspaceKeyResult.WorkspaceKey,
 		FileID:       fileID,
 	})
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "failed to derive file key: %v", err)
 	}
 
 	// Generate a key ID for tracking.
@@ -95,26 +149,36 @@ func (a *VaultServiceGRPCAdapter) DeriveFileKey(ctx context.Context, req *vaultv
 }
 
 // RotateWorkspaceKey handles the RotateWorkspaceKey RPC.
+// It validates the session token, then rotates the workspace key using the
+// client-provided master key.
 func (a *VaultServiceGRPCAdapter) RotateWorkspaceKey(ctx context.Context, req *vaultv1.RotateWorkspaceKeyRequest) (*commonv1.Empty, error) {
+	// Validate session token from gRPC metadata.
+	sessionToken, err := extractSessionToken(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "session token required")
+	}
+	_, err = a.sessionValidator.Validate(ctx, sessionToken)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "invalid session: "+err.Error())
+	}
+
 	workspaceID := req.GetWorkspaceId().GetValue()
-	userID := req.GetUserId().GetValue()
-
 	if workspaceID == "" {
-		return nil, fmt.Errorf("workspace ID is required")
-	}
-	if userID == "" {
-		return nil, fmt.Errorf("user ID is required")
+		return nil, status.Error(codes.InvalidArgument, "workspace ID is required")
 	}
 
-	// For Phase 1, derive a new master key from user_id as placeholder.
-	masterKey := []byte(userID)
+	// Use client-provided master key instead of placeholder.
+	masterKey := req.GetMasterKey()
+	if len(masterKey) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "master key is required")
+	}
 
-	_, err := a.handler.RotateWorkspaceKey(ctx, &RotateWorkspaceKeyRequest{
+	_, err = a.handler.RotateWorkspaceKey(ctx, &RotateWorkspaceKeyRequest{
 		MasterKey:   masterKey,
 		WorkspaceID: workspaceID,
 	})
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "failed to rotate workspace key: %v", err)
 	}
 
 	return &commonv1.Empty{}, nil

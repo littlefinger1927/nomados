@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log"
 	"net"
 	"os"
@@ -11,12 +10,10 @@ import (
 	vaultv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/vault/v1"
 	"github.com/nomados/nomados/packages/logging"
 	"github.com/nomados/nomados/services/vault-service/internal/handler"
-	"github.com/nomados/nomados/services/vault-service/internal/health"
-	"github.com/nomados/nomados/services/vault-service/internal/keyderivation"
 	vaultnats "github.com/nomados/nomados/services/vault-service/internal/nats"
+	"github.com/nomados/nomados/services/vault-service/internal/keyderivation"
+	"github.com/nomados/nomados/services/vault-service/internal/service"
 	"google.golang.org/grpc"
-	grpchealth "google.golang.org/grpc/health"
-	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 func main() {
@@ -30,6 +27,12 @@ func main() {
 	listenAddr := os.Getenv("VAULT_SERVICE_ADDR")
 	if listenAddr == "" {
 		listenAddr = ":50057"
+	}
+
+	// Session service address for token validation.
+	sessionAddr := os.Getenv("SESSION_SERVICE_ADDR")
+	if sessionAddr == "" {
+		sessionAddr = "localhost:50052"
 	}
 
 	// Initialize logger.
@@ -51,21 +54,20 @@ func main() {
 		defer publisher.Close()
 	}
 
+	// Initialize session validator for authenticating requests.
+	sessionValidator, err := service.NewSessionValidator(sessionAddr)
+	if err != nil {
+		log.Fatalf("failed to initialize session validator: %v", err)
+	}
+	defer sessionValidator.Close()
+
 	// Initialize handler and gRPC adapter.
 	vaultHandler := handler.NewVaultServiceHandler(kd, publisher, logger)
-	grpcAdapter := handler.NewVaultServiceGRPCAdapter(vaultHandler)
+	grpcAdapter := handler.NewVaultServiceGRPCAdapter(vaultHandler, sessionValidator)
 
 	// Set up gRPC server.
 	grpcServer := grpc.NewServer()
 	vaultv1.RegisterVaultServiceServer(grpcServer, grpcAdapter)
-
-	// Register gRPC health server.
-	hs := grpchealth.NewServer()
-	grpc_health_v1.RegisterHealthServer(grpcServer, hs)
-	hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
-
-	// Create health checker for dependency verification.
-	checker := health.NewChecker(publisher)
 
 	lis, err := net.Listen("tcp", listenAddr)
 	if err != nil {
@@ -77,19 +79,9 @@ func main() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		<-sigCh
-
-		// Mark as NOT_SERVING before stopping.
-		hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
 		log.Println("shutting down vault-service...")
 		grpcServer.GracefulStop()
 	}()
-
-	// All dependencies connected — mark as SERVING.
-	if checker.Check(context.Background()) == grpc_health_v1.HealthCheckResponse_SERVING {
-		hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
-	} else {
-		log.Println("warning: health check failed at startup, reporting NOT_SERVING")
-	}
 
 	logger.Info("vault-service starting", "addr", listenAddr)
 	log.Printf("vault-service listening on %s", listenAddr)

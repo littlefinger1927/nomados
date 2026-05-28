@@ -27,6 +27,7 @@ type DeriveWorkspaceKeyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        *v1.UUID               `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	WorkspaceId   *v1.UUID               `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	MasterKey     []byte                 `protobuf:"bytes,3,opt,name=master_key,json=masterKey,proto3" json:"master_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -71,6 +72,13 @@ func (x *DeriveWorkspaceKeyRequest) GetUserId() *v1.UUID {
 func (x *DeriveWorkspaceKeyRequest) GetWorkspaceId() *v1.UUID {
 	if x != nil {
 		return x.WorkspaceId
+	}
+	return nil
+}
+
+func (x *DeriveWorkspaceKeyRequest) GetMasterKey() []byte {
+	if x != nil {
+		return x.MasterKey
 	}
 	return nil
 }
@@ -131,6 +139,7 @@ type DeriveFileKeyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	WorkspaceId   *v1.UUID               `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
 	FileId        *v1.UUID               `protobuf:"bytes,2,opt,name=file_id,json=fileId,proto3" json:"file_id,omitempty"`
+	MasterKey     []byte                 `protobuf:"bytes,3,opt,name=master_key,json=masterKey,proto3" json:"master_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -175,6 +184,13 @@ func (x *DeriveFileKeyRequest) GetWorkspaceId() *v1.UUID {
 func (x *DeriveFileKeyRequest) GetFileId() *v1.UUID {
 	if x != nil {
 		return x.FileId
+	}
+	return nil
+}
+
+func (x *DeriveFileKeyRequest) GetMasterKey() []byte {
+	if x != nil {
+		return x.MasterKey
 	}
 	return nil
 }
@@ -235,6 +251,7 @@ type RotateWorkspaceKeyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	WorkspaceId   *v1.UUID               `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
 	UserId        *v1.UUID               `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	MasterKey     []byte                 `protobuf:"bytes,3,opt,name=master_key,json=masterKey,proto3" json:"master_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -283,26 +300,39 @@ func (x *RotateWorkspaceKeyRequest) GetUserId() *v1.UUID {
 	return nil
 }
 
+func (x *RotateWorkspaceKeyRequest) GetMasterKey() []byte {
+	if x != nil {
+		return x.MasterKey
+	}
+	return nil
+}
+
 var File_nomados_vault_v1_vault_proto protoreflect.FileDescriptor
 
 const file_nomados_vault_v1_vault_proto_rawDesc = "" +
 	"\n" +
-	"\x1cnomados/vault/v1/vault.proto\x12\x10nomados.vault.v1\x1a\x1enomados/common/v1/common.proto\x1a\x1cgoogle/api/annotations.proto\"\x89\x01\n" +
+	"\x1cnomados/vault/v1/vault.proto\x12\x10nomados.vault.v1\x1a\x1enomados/common/v1/common.proto\x1a\x1cgoogle/api/annotations.proto\"\xa8\x01\n" +
 	"\x19DeriveWorkspaceKeyRequest\x120\n" +
 	"\auser_id\x18\x01 \x01(\v2\x17.nomados.common.v1.UUIDR\x06userId\x12:\n" +
-	"\fworkspace_id\x18\x02 \x01(\v2\x17.nomados.common.v1.UUIDR\vworkspaceId\"X\n" +
+	"\fworkspace_id\x18\x02 \x01(\v2\x17.nomados.common.v1.UUIDR\vworkspaceId\x12\x1d\n" +
+	"\n" +
+	"master_key\x18\x03 \x01(\fR\tmasterKey\"X\n" +
 	"\x1aDeriveWorkspaceKeyResponse\x12#\n" +
 	"\rencrypted_key\x18\x01 \x01(\fR\fencryptedKey\x12\x15\n" +
-	"\x06key_id\x18\x02 \x01(\fR\x05keyId\"\x84\x01\n" +
+	"\x06key_id\x18\x02 \x01(\fR\x05keyId\"\xa3\x01\n" +
 	"\x14DeriveFileKeyRequest\x12:\n" +
 	"\fworkspace_id\x18\x01 \x01(\v2\x17.nomados.common.v1.UUIDR\vworkspaceId\x120\n" +
-	"\afile_id\x18\x02 \x01(\v2\x17.nomados.common.v1.UUIDR\x06fileId\"S\n" +
+	"\afile_id\x18\x02 \x01(\v2\x17.nomados.common.v1.UUIDR\x06fileId\x12\x1d\n" +
+	"\n" +
+	"master_key\x18\x03 \x01(\fR\tmasterKey\"S\n" +
 	"\x15DeriveFileKeyResponse\x12#\n" +
 	"\rencrypted_key\x18\x01 \x01(\fR\fencryptedKey\x12\x15\n" +
-	"\x06key_id\x18\x02 \x01(\fR\x05keyId\"\x89\x01\n" +
+	"\x06key_id\x18\x02 \x01(\fR\x05keyId\"\xa8\x01\n" +
 	"\x19RotateWorkspaceKeyRequest\x12:\n" +
 	"\fworkspace_id\x18\x01 \x01(\v2\x17.nomados.common.v1.UUIDR\vworkspaceId\x120\n" +
-	"\auser_id\x18\x02 \x01(\v2\x17.nomados.common.v1.UUIDR\x06userId2\xbd\x03\n" +
+	"\auser_id\x18\x02 \x01(\v2\x17.nomados.common.v1.UUIDR\x06userId\x12\x1d\n" +
+	"\n" +
+	"master_key\x18\x03 \x01(\fR\tmasterKey2\xbd\x03\n" +
 	"\fVaultService\x12\x9a\x01\n" +
 	"\x12DeriveWorkspaceKey\x12+.nomados.vault.v1.DeriveWorkspaceKeyRequest\x1a,.nomados.vault.v1.DeriveWorkspaceKeyResponse\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/v1/vault/derive_workspace_key\x12\x86\x01\n" +
 	"\rDeriveFileKey\x12&.nomados.vault.v1.DeriveFileKeyRequest\x1a'.nomados.vault.v1.DeriveFileKeyResponse\"$\x82\xd3\xe4\x93\x02\x1e:\x01*\"\x19/v1/vault/derive_file_key\x12\x86\x01\n" +

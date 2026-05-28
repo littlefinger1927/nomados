@@ -1,4 +1,6 @@
 services:
+  # ─── Infrastructure ───────────────────────────────────────────────
+
   postgres:
     image: postgres:16-alpine
     ports:
@@ -12,6 +14,16 @@ services:
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U nomados"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -58,20 +70,185 @@ services:
       - ./turn/turnserver.conf:/etc/turnserver.conf
     command: ["-c", "/etc/turnserver.conf"]
 
-  redis:
-    image: redis:7-alpine
+  # ─── Application Services ─────────────────────────────────────────
+
+  auth-service:
+    build:
+      context: ../..
+      dockerfile: services/auth-service/Dockerfile
     ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      - "50051:50051"
+    environment:
+      - DATABASE_URL=postgres://nomados:nomados_dev@postgres:5432/nomados?sslmode=disable
+      - AUTH_SERVICE_ADDR=:50051
+      - SESSION_SERVICE_ADDR=session-service:50052
+    depends_on:
+      postgres:
+        condition: service_healthy
+      session-service:
+        condition: service_started
+
+  session-service:
+    build:
+      context: ../..
+      dockerfile: services/session-service/Dockerfile
+    ports:
+      - "50052:50052"
+    environment:
+      - DATABASE_URL=postgres://nomados:nomados_dev@postgres:5432/nomados?sslmode=disable
+      - NATS_URL=nats://nats:4222
+      - SESSION_SERVICE_ADDR=:50052
+      - SIGNING_SECRET=nomados-dev-secret
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+
+  workspace-orchestrator:
+    build:
+      context: ../..
+      dockerfile: services/workspace-orchestrator/Dockerfile
+    ports:
+      - "50053:50053"
+    environment:
+      - NATS_URL=nats://nats:4222
+      - WORKSPACE_SERVICE_ADDR=:50053
+    depends_on:
+      nats:
+        condition: service_healthy
     volumes:
-      - redis_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  file-service:
+    build:
+      context: ../..
+      dockerfile: services/file-service/Dockerfile
+    ports:
+      - "50056:50056"
+    environment:
+      - DATABASE_URL=postgres://nomados:nomados_dev@postgres:5432/nomados?sslmode=disable
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=nomados
+      - MINIO_SECRET_KEY=nomados_dev_key
+      - MINIO_BUCKET=nomados-files
+      - MINIO_USE_SSL=false
+      - FILE_SERVICE_ADDR=:50056
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  browser-manager:
+    build:
+      context: ../..
+      dockerfile: services/browser-manager/Dockerfile
+    ports:
+      - "50054:50054"
+    environment:
+      - NATS_URL=nats://nats:4222
+      - BROWSER_MANAGER_ADDR=:50054
+      - CHROMIUM_BIN_PATH=/usr/bin/chromium-browser
+      - BROWSER_PROFILE_BASE_PATH=/home/appuser/browser-profiles
+    depends_on:
+      nats:
+        condition: service_healthy
+
+  streaming-service:
+    build:
+      context: ../..
+      dockerfile: services/streaming-service/Dockerfile
+    ports:
+      - "50055:50055"
+    environment:
+      - NATS_URL=nats://nats:4222
+      - STREAMING_SERVICE_ADDR=:50055
+      - TURN_SERVER_URL=turn:coturn:3478
+      - TURN_USERNAME=nomados
+      - TURN_PASSWORD=nomados_dev_secret
+      - TURN_REALM=nomados.dev
+    depends_on:
+      nats:
+        condition: service_healthy
+
+  vault-service:
+    build:
+      context: ../..
+      dockerfile: services/vault-service/Dockerfile
+    ports:
+      - "50057:50057"
+    environment:
+      - NATS_URL=nats://nats:4222
+      - VAULT_SERVICE_ADDR=:50057
+    depends_on:
+      nats:
+        condition: service_healthy
+
+  observability:
+    build:
+      context: ../..
+      dockerfile: services/observability/Dockerfile
+    ports:
+      - "9090:9090"
+    environment:
+      - NATS_URL=nats://nats:4222
+      - OBSERVABILITY_ADDR=:9090
+    depends_on:
+      nats:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  gateway-service:
+    build:
+      context: ../..
+      dockerfile: services/gateway-service/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - GATEWAY_ADDR=:8080
+      - AUTH_SERVICE_ADDR=auth-service:50051
+      - SESSION_SERVICE_ADDR=session-service:50052
+      - WORKSPACE_SERVICE_ADDR=workspace-orchestrator:50053
+      - BROWSER_SERVICE_ADDR=browser-manager:50054
+      - STREAMING_SERVICE_ADDR=streaming-service:50055
+      - FILE_SERVICE_ADDR=file-service:50056
+      - VAULT_SERVICE_ADDR=vault-service:50057
+      - SIGNING_SECRET=nomados-dev-secret
+      - RATE_LIMIT_RPS=100
+      - RATE_LIMIT_BURST=200
+    depends_on:
+      - auth-service
+      - session-service
+      - workspace-orchestrator
+      - browser-manager
+      - streaming-service
+      - file-service
+      - vault-service
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  web-desktop:
+    build:
+      context: ../..
+      dockerfile: apps/web-desktop/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_GATEWAY_URL=http://gateway-service:8080
+    depends_on:
+      - gateway-service
 
 volumes:
   postgres_data:
   minio_data:
   nats_data:
-  redis_data:

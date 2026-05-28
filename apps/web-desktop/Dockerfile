@@ -1,0 +1,45 @@
+# Build stage
+FROM node:20-alpine AS builder
+
+WORKDIR /workspace
+
+# Copy the local ui-components package that web-desktop depends on
+COPY packages/ui-components/ ./packages/ui-components/
+
+# Copy web-desktop package files first for better caching
+COPY apps/web-desktop/package.json ./apps/web-desktop/package.json
+COPY apps/web-desktop/package-lock.json ./apps/web-desktop/package-lock.json
+
+# Install dependencies (from within web-desktop directory)
+# The file: reference to ui-components resolves via the workspace structure
+WORKDIR /workspace/apps/web-desktop
+RUN npm ci
+
+# Copy the rest of the web-desktop source
+WORKDIR /workspace
+COPY apps/web-desktop/ ./apps/web-desktop/
+
+# Build the Next.js app
+WORKDIR /workspace/apps/web-desktop
+RUN npm run build
+
+# Runtime stage - copy entire app with node_modules since no standalone output
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Create non-root user
+RUN adduser -D -g '' appuser
+
+# Copy the entire built application
+COPY --from=builder /workspace/apps/web-desktop/ ./
+
+# Change ownership to appuser
+RUN chown -R appuser:appuser /app
+
+# Use non-root user
+USER appuser
+
+EXPOSE 3000
+
+CMD ["npm", "start"]

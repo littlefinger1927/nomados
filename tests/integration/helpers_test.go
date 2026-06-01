@@ -15,7 +15,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	authsdk "github.com/nomados/nomados/packages/auth-sdk"
 	authv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/auth/v1"
+	filev1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/file/v1"
 	sessionv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/session/v1"
 	vaultv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/vault/v1"
 	workspacev1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/workspace/v1"
@@ -34,7 +36,9 @@ var (
 	sessionServiceAddr   = envOr("SESSION_SERVICE_ADDR", "localhost:50052")
 	workspaceServiceAddr = envOr("WORKSPACE_SERVICE_ADDR", "localhost:50053")
 	vaultServiceAddr     = envOr("VAULT_SERVICE_ADDR", "localhost:50057")
+	fileServiceAddr     = envOr("FILE_SERVICE_ADDR", "localhost:50056")
 	gatewayAddr          = envOr("GATEWAY_ADDR", "localhost:8080")
+	gatewayBaseURL       = "http://" + envOr("GATEWAY_ADDR", "localhost:8080")
 )
 
 func envOr(key, fallback string) string {
@@ -86,6 +90,22 @@ func newVaultClient(t *testing.T) (vaultv1.VaultServiceClient, *grpc.ClientConn)
 		t.Fatalf("failed to connect to vault service at %s: %v", vaultServiceAddr, err)
 	}
 	return vaultv1.NewVaultServiceClient(conn), conn
+}
+
+// newFileClient creates a gRPC client for the file service.
+func newFileClient(t *testing.T) (filev1.FileServiceClient, *grpc.ClientConn) {
+	t.Helper()
+	conn, err := grpc.NewClient(fileServiceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatalf("failed to connect to file service at %s: %v", fileServiceAddr, err)
+	}
+	return filev1.NewFileServiceClient(conn), conn
+}
+
+// generateAccessToken creates a valid JWT access token for integration tests.
+func generateAccessToken(userID, sessionID, deviceID string) (string, error) {
+	validator := authsdk.NewTokenValidator(envOr("SIGNING_SECRET", "nomados-dev-secret"))
+	return validator.GenerateAccessToken(userID, sessionID, deviceID, 1*time.Hour)
 }
 
 // skipIfServiceUnavailable checks if a gRPC service is reachable.

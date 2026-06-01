@@ -1,13 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Button } from '@nomados/ui-components';
-import {
-  WorkspaceConnection,
-  ConnectionState,
-  isWebRTCAvailable,
-} from '@/lib/webrtc';
+import { Button, WorkspaceDetailSkeleton } from '@nomados/ui-components';
+import { StreamViewer } from './StreamViewer';
 
 const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:8080';
 
@@ -18,6 +14,7 @@ interface Workspace {
   name: string;
   state: WorkspaceState;
   createdAt: string;
+  novncPort?: number;
 }
 
 const stateColors: Record<WorkspaceState, string> = {
@@ -46,7 +43,7 @@ function formatDate(iso: string): string {
 
 async function fetchWorkspaceFromApi(workspaceId: string): Promise<Workspace | null> {
   const token = localStorage.getItem('nomados-session');
-  const res = await fetch(`${GATEWAY_URL}/workspace/${workspaceId}`, {
+  const res = await fetch(`${GATEWAY_URL}/v1/workspace/${workspaceId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
@@ -63,15 +60,8 @@ export default function WorkspaceDetailPage() {
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(true);
-  const [connecting, setConnecting] = useState(true);
   const [activeTab, setActiveTab] = useState<'files' | 'info'>('info');
 
-  // WebRTC connection state
-  const [webrtcState, setWebrtcState] = useState<ConnectionState>('disconnected');
-  const [connection, setConnection] = useState<WorkspaceConnection | null>(null);
-  const webrtcAvailable = isWebRTCAvailable();
-
-  // Derived state (must be before effects that reference them)
   const isRunning = workspace?.state === 'Running';
 
   // Fetch workspace data on mount
@@ -99,52 +89,23 @@ export default function WorkspaceDetailPage() {
     return () => { cancelled = true; };
   }, [workspaceId]);
 
-  // Simulate connecting to stream when workspace is running
-  useEffect(() => {
-    if (isRunning) {
-      const timer = setTimeout(() => setConnecting(false), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [isRunning]);
-
-  // WebRTC connection callback
-  const connectWebRTC = useCallback(async () => {
-    if (!workspace || connection) return;
-
-    const conn = new WorkspaceConnection({
-      workspaceId: workspace.id,
-      onStateChange: setWebrtcState,
-    });
-
-    setConnection(conn);
-    try {
-      await conn.connect();
-    } catch (err) {
-      console.error('WebRTC connection failed, falling back to noVNC:', err);
-      // Fall back to noVNC — the noVNC iframe will still be shown
-    }
-  }, [workspace?.id, connection]);
-
-  // Auto-connect WebRTC when workspace is running and available
-  useEffect(() => {
-    if (isRunning && webrtcAvailable && !connection) {
-      connectWebRTC();
-    }
-  }, [isRunning, webrtcAvailable, connection, connectWebRTC]);
-
-  // Cleanup WebRTC connection on unmount
-  useEffect(() => {
-    return () => {
-      connection?.disconnect();
-    };
-  }, [connection]);
-
   const handleAction = async (action: 'pause' | 'stop' | 'resume' | 'start') => {
+    const actionEndpoints: Record<string, string> = {
+      start: '/v1/workspace/start',
+      resume: '/v1/workspace/resume',
+      pause: '/v1/workspace/pause',
+      stop: '/v1/workspace/stop',
+    };
+
     try {
       const token = localStorage.getItem('nomados-session');
-      await fetch(`${GATEWAY_URL}/workspace/${workspaceId}/${action}`, {
+      await fetch(`${GATEWAY_URL}${actionEndpoints[action]}`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id: { value: workspaceId } }),
       });
     } catch {
       // Mock - update locally
@@ -169,9 +130,13 @@ export default function WorkspaceDetailPage() {
 
     try {
       const token = localStorage.getItem('nomados-session');
-      await fetch(`${GATEWAY_URL}/workspace/${workspaceId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+      await fetch(`${GATEWAY_URL}/v1/workspace/destroy`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id: { value: workspaceId } }),
       });
     } catch {
       // Ignore
@@ -181,11 +146,7 @@ export default function WorkspaceDetailPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-nomados-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-nomados-border border-t-nomados-primary" />
-      </div>
-    );
+    return <WorkspaceDetailSkeleton />;
   }
 
   if (!workspace) {
@@ -262,125 +223,16 @@ export default function WorkspaceDetailPage() {
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Stream Viewer Area */}
-        <div className="flex-1 flex items-center justify-center bg-black relative">
-          {isCreating && (
-            <div className="flex flex-col items-center gap-3">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-nomados-border border-t-nomados-primary" />
-              <p className="text-sm text-nomados-text-muted">Creating workspace...</p>
-            </div>
-          )}
-          {isRunning && connecting && (
-            <div className="flex flex-col items-center gap-3">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-nomados-border border-t-nomados-primary" />
-              <p className="text-sm text-nomados-text-muted">Connecting to workspace...</p>
-            </div>
-          )}
-          {isRunning && !connecting && (
-            <div className="relative w-full h-full flex items-center justify-center">
-              {/* WebRTC status badge */}
-              {webrtcAvailable && (
-                <div className="absolute top-2 right-2 z-10">
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                    webrtcState === 'connected' ? 'bg-green-500/20 text-green-400' :
-                    webrtcState === 'connecting' ? 'bg-yellow-500/20 text-yellow-400' :
-                    webrtcState === 'failed' ? 'bg-red-500/20 text-red-400' :
-                    'bg-gray-500/20 text-gray-400'
-                  }`}>
-                    {webrtcState === 'connected' ? 'WebRTC' :
-                     webrtcState === 'connecting' ? 'Connecting...' :
-                     webrtcState === 'failed' ? 'WebRTC Failed' : 'Disconnected'}
-                  </span>
-                </div>
-              )}
-              <div className="flex flex-col items-center gap-4 max-w-md text-center px-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-nomados-surface border border-nomados-border">
-                  <svg
-                    className="h-8 w-8 text-nomados-primary"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-nomados-text">
-                  Stream Viewer
-                </h3>
-                <p className="text-sm text-nomados-text-muted leading-relaxed">
-                  {webrtcState === 'connected'
-                    ? 'Connected via WebRTC. The remote browser stream is active.'
-                    : webrtcState === 'failed'
-                      ? 'WebRTC connection failed. Using noVNC fallback.'
-                      : webrtcState === 'connecting'
-                        ? 'Establishing WebRTC connection to workspace...'
-                        : 'The browser stream will connect via WebRTC when the streaming service is available.'}
-                </p>
-                <div className="rounded-lg border border-dashed border-nomados-border px-4 py-3 text-xs text-nomados-text-muted">
-                  webrtc://workspace/{workspaceId}/stream
-                </div>
-              </div>
-            </div>
-          )}
-          {isPaused && (
-            <div className="flex flex-col items-center gap-4 max-w-md text-center px-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-500/10 border border-orange-500/20">
-                <svg
-                  className="h-8 w-8 text-orange-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-nomados-text">Workspace Paused</h3>
-              <p className="text-sm text-nomados-text-muted">
-                Resume this workspace to continue your session.
-              </p>
-            </div>
-          )}
-          {isStopped && (
-            <div className="flex flex-col items-center gap-4 max-w-md text-center px-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/10 border border-red-500/20">
-                <svg
-                  className="h-8 w-8 text-red-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-nomados-text">Workspace Stopped</h3>
-              <p className="text-sm text-nomados-text-muted">
-                Start this workspace to begin a new session.
-              </p>
-            </div>
-          )}
+        <div className="flex-1 flex items-center justify-center bg-black relative md:pb-0 pb-14">
+          <StreamViewer
+            workspaceId={workspaceId}
+            workspaceState={workspace.state}
+            novncPort={workspace.novncPort}
+          />
         </div>
 
-        {/* Sidebar */}
-        <aside className="w-72 border-l border-nomados-border bg-nomados-surface flex flex-col">
+        {/* Sidebar - hidden on mobile, narrower on tablet, full on desktop */}
+        <aside className="hidden md:flex w-64 lg:w-72 border-l border-nomados-border bg-nomados-surface flex-col">
           {/* Tab Bar */}
           <div className="flex border-b border-nomados-border">
             <button
@@ -441,17 +293,7 @@ export default function WorkspaceDetailPage() {
                     Connection
                   </label>
                   <p className="mt-1 text-sm text-nomados-text-muted">
-                    {isRunning
-                      ? webrtcState === 'connected'
-                        ? 'WebRTC Connected'
-                        : webrtcState === 'connecting'
-                          ? 'WebRTC Connecting...'
-                          : webrtcState === 'failed'
-                            ? 'WebRTC Failed (noVNC fallback)'
-                            : webrtcAvailable
-                              ? 'WebRTC Disconnected'
-                              : 'noVNC (WebRTC unavailable)'
-                      : 'Disconnected'}
+                    {isRunning ? 'Active' : 'Disconnected'}
                   </p>
                 </div>
               </div>
@@ -483,6 +325,101 @@ export default function WorkspaceDetailPage() {
           </div>
         </aside>
       </div>
+
+      {/* Mobile bottom tab bar for Info/Files switching */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 border-t border-nomados-border bg-nomados-surface">
+        <div className="flex">
+          <button
+            onClick={() => setActiveTab('info')}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'info'
+                ? 'text-nomados-primary border-t-2 border-t-nomados-primary'
+                : 'text-nomados-text-muted'
+            }`}
+          >
+            Info
+          </button>
+          <button
+            onClick={() => setActiveTab('files')}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'files'
+                ? 'text-nomados-primary border-t-2 border-t-nomados-primary'
+                : 'text-nomados-text-muted'
+            }`}
+          >
+            Files
+          </button>
+        </div>
+      </nav>
+
+      {/* Mobile panel overlay for Info/Files content */}
+      {activeTab === 'info' && (
+        <div className="md:hidden fixed inset-x-0 bottom-12 z-20 max-h-[50vh] overflow-y-auto border-t border-nomados-border bg-nomados-surface p-4">
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-medium text-nomados-text-muted uppercase tracking-wider">
+                Workspace ID
+              </label>
+              <p className="mt-1 text-sm text-nomados-text font-mono break-all">
+                {workspace.id}
+              </p>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-nomados-text-muted uppercase tracking-wider">
+                State
+              </label>
+              <div className="mt-1">
+                <span
+                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${stateColors[workspace.state]}`}
+                >
+                  {workspace.state}
+                </span>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-nomados-text-muted uppercase tracking-wider">
+                Created
+              </label>
+              <p className="mt-1 text-sm text-nomados-text">
+                {formatDate(workspace.createdAt)}
+              </p>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-nomados-text-muted uppercase tracking-wider">
+                Connection
+              </label>
+              <p className="mt-1 text-sm text-nomados-text-muted">
+                {isRunning ? 'Active' : 'Disconnected'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      {activeTab === 'files' && (
+        <div className="md:hidden fixed inset-x-0 bottom-12 z-20 max-h-[50vh] overflow-y-auto border-t border-nomados-border bg-nomados-surface p-4">
+          <div className="flex flex-col items-center justify-center py-4 text-center">
+            <svg
+              className="h-10 w-10 text-nomados-text-muted mb-3"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+              />
+            </svg>
+            <p className="text-sm text-nomados-text-muted">
+              Files will appear here
+            </p>
+            <p className="text-xs text-nomados-text-muted mt-1">
+              Connect to a running workspace to browse files
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

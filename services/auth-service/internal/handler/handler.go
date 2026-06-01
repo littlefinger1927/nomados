@@ -3,12 +3,15 @@ package handler
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	authv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/auth/v1"
 	commonv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/common/v1"
 	sessionv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/session/v1"
 	"github.com/nomados/nomados/services/auth-service/internal/service"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // AuthServiceHandler implements the AuthServiceServer gRPC interface.
@@ -132,4 +135,87 @@ func (h *AuthServiceHandler) LoginVerify(ctx context.Context, req *authv1.LoginV
 			Value: deviceID,
 		},
 	}, nil
+}
+
+// AddCredential handles the gRPC AddCredential RPC.
+func (h *AuthServiceHandler) AddCredential(ctx context.Context, req *authv1.AddCredentialRequest) (*authv1.AddCredentialResponse, error) {
+	userID, err := protoUUIDToUUID(req.GetUserId())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid user_id: %v", err)
+	}
+
+	device, challenge, err := h.svc.AddCredential(ctx, userID, req.GetDeviceName())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to add credential: %v", err)
+	}
+
+	return &authv1.AddCredentialResponse{
+		WebauthnChallenge: challenge,
+		DeviceId:          uuidToProtoUUID(device.ID),
+	}, nil
+}
+
+// ListCredentials handles the gRPC ListCredentials RPC.
+func (h *AuthServiceHandler) ListCredentials(ctx context.Context, req *authv1.ListCredentialsRequest) (*authv1.ListCredentialsResponse, error) {
+	userID, err := protoUUIDToUUID(req.GetUserId())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid user_id: %v", err)
+	}
+
+	devices, err := h.svc.ListCredentials(ctx, userID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list credentials: %v", err)
+	}
+
+	creds := make([]*authv1.CredentialInfo, 0, len(devices))
+	for _, d := range devices {
+		creds = append(creds, &authv1.CredentialInfo{
+			DeviceId:        uuidToProtoUUID(d.ID),
+			DeviceName:      d.Name,
+			AttestationType: d.Attestation,
+			CreatedAt:       d.CreatedAt.Unix(),
+			LastSeen:        lastSeenToUnix(d.LastSeen),
+		})
+	}
+
+	return &authv1.ListCredentialsResponse{Credentials: creds}, nil
+}
+
+// RemoveCredential handles the gRPC RemoveCredential RPC.
+func (h *AuthServiceHandler) RemoveCredential(ctx context.Context, req *authv1.RemoveCredentialRequest) (*commonv1.Empty, error) {
+	userID, err := protoUUIDToUUID(req.GetUserId())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid user_id: %v", err)
+	}
+	deviceID, err := protoUUIDToUUID(req.GetDeviceId())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid device_id: %v", err)
+	}
+
+	if err := h.svc.RemoveCredential(ctx, userID, deviceID); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to remove credential: %v", err)
+	}
+
+	return &commonv1.Empty{}, nil
+}
+
+// protoUUIDToUUID converts a proto UUID to a Go uuid.UUID.
+func protoUUIDToUUID(pb *commonv1.UUID) (uuid.UUID, error) {
+	if pb == nil {
+		return uuid.Nil, fmt.Errorf("uuid is nil")
+	}
+	return uuid.Parse(pb.GetValue())
+}
+
+// uuidToProtoUUID converts a Go uuid.UUID to a proto UUID.
+func uuidToProtoUUID(id uuid.UUID) *commonv1.UUID {
+	return &commonv1.UUID{Value: id.String()}
+}
+
+// lastSeenToUnix converts a *time.Time to a Unix timestamp, returning 0 for nil.
+func lastSeenToUnix(t *time.Time) int64 {
+	if t == nil {
+		return 0
+	}
+	return t.Unix()
 }

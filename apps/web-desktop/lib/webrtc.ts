@@ -19,22 +19,28 @@ export interface ConnectionConfig {
   workspaceId: string;
   onStateChange?: (state: ConnectionState) => void;
   onDataChannel?: (channel: RTCDataChannel) => void;
+  maxReconnectAttempts?: number;
 }
 
 export type ConnectionState =
   | 'disconnected'
   | 'connecting'
   | 'connected'
-  | 'failed';
+  | 'failed'
+  | 'reconnecting';
 
 export class WorkspaceConnection {
   private peerConnection: RTCPeerConnection | null = null;
   private dataChannel: RTCDataChannel | null = null;
   private config: ConnectionConfig;
   private _state: ConnectionState = 'disconnected';
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts: number;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(config: ConnectionConfig) {
     this.config = config;
+    this.maxReconnectAttempts = config.maxReconnectAttempts ?? 5;
   }
 
   get state(): ConnectionState {
@@ -44,6 +50,21 @@ export class WorkspaceConnection {
   private setState(state: ConnectionState): void {
     this._state = state;
     this.config.onStateChange?.(state);
+  }
+
+  private scheduleReconnect(): void {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      this.setState('failed');
+      return;
+    }
+
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
+    this.reconnectAttempts++;
+    this.setState('reconnecting');
+
+    this.reconnectTimer = setTimeout(() => {
+      this.connect();
+    }, delay);
   }
 
   async connect(): Promise<void> {
@@ -70,6 +91,7 @@ export class WorkspaceConnection {
         ordered: true,
       });
       this.dataChannel.onopen = () => {
+        this.reconnectAttempts = 0;
         this.setState('connected');
       };
 
@@ -84,14 +106,15 @@ export class WorkspaceConnection {
       this.peerConnection.onconnectionstatechange = () => {
         switch (this.peerConnection?.connectionState) {
           case 'connected':
+            this.reconnectAttempts = 0;
             this.setState('connected');
             break;
           case 'disconnected':
           case 'closed':
-            this.setState('disconnected');
+            this.scheduleReconnect();
             break;
           case 'failed':
-            this.setState('failed');
+            this.scheduleReconnect();
             break;
         }
       };
@@ -158,6 +181,11 @@ export class WorkspaceConnection {
   }
 
   disconnect(): void {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.reconnectAttempts = 0;
     if (this.dataChannel) {
       this.dataChannel.close();
       this.dataChannel = null;

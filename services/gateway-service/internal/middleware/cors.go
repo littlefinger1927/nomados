@@ -21,6 +21,9 @@ func CORSMiddleware(cfg CORSConfig, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 
+		// Always set Vary: Origin for cache correctness
+		w.Header().Set("Vary", "Origin")
+
 		// Check if origin is allowed
 		allowed := false
 		for _, o := range allowedOrigins {

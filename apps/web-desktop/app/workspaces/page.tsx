@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Input, Card, Modal } from '@nomados/ui-components';
+import { Button, Input, Card, Modal, WorkspaceCardSkeleton } from '@nomados/ui-components';
 
 const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:8080';
 
@@ -86,6 +86,7 @@ export default function WorkspacesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [userInitial, setUserInitial] = useState('?');
 
   // Load user initial on mount
@@ -102,10 +103,14 @@ export default function WorkspacesPage() {
         const data = await fetchWorkspacesFromApi();
         if (!cancelled) {
           setWorkspaces(data);
+          setError(null);
         }
-      } catch {
+      } catch (err) {
         if (!cancelled) {
-          setWorkspaces(MOCK_WORKSPACES);
+          setError(err instanceof Error ? err.message : 'Failed to load workspaces');
+          if (process.env.NODE_ENV === 'development') {
+            setWorkspaces(MOCK_WORKSPACES);
+          }
         }
       } finally {
         if (!cancelled) {
@@ -188,9 +193,10 @@ export default function WorkspacesPage() {
     setWorkspaces((prev) => prev.filter((w) => w.id !== id));
   };
 
-  const handleAction = async (id: string, action: 'connect' | 'resume' | 'pause' | 'stop') => {
+  const handleAction = async (id: string, action: 'connect' | 'start' | 'resume' | 'pause' | 'stop') => {
     const actionMap: Record<string, string> = {
       connect: '/v1/workspace/connect',
+      start: '/v1/workspace/start',
       resume: '/v1/workspace/resume',
       pause: '/v1/workspace/pause',
       stop: '/v1/workspace/stop',
@@ -204,7 +210,7 @@ export default function WorkspacesPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id: { value: id } }),
       });
     } catch {
       // Mock action in Phase 1
@@ -216,6 +222,7 @@ export default function WorkspacesPage() {
     }
 
     const stateMap: Record<string, WorkspaceState> = {
+      start: 'Running',
       resume: 'Running',
       pause: 'Paused',
       stop: 'Stopped',
@@ -276,8 +283,10 @@ export default function WorkspacesPage() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-nomados-border border-t-nomados-primary" />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <WorkspaceCardSkeleton key={i} />
+            ))}
           </div>
         ) : workspaces.length === 0 ? (
           /* Empty State */
@@ -341,6 +350,15 @@ export default function WorkspacesPage() {
                         onClick={() => handleAction(ws.id, 'resume')}
                       >
                         Resume
+                      </Button>
+                    )}
+                    {ws.state === 'Stopped' && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleAction(ws.id, 'start')}
+                      >
+                        Start
                       </Button>
                     )}
                     {ws.state === 'Running' && (

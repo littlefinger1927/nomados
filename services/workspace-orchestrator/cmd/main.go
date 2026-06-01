@@ -9,12 +9,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nomados/nomados/packages/logging"
 	workspacev1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/workspace/v1"
 	"github.com/nomados/nomados/services/workspace-orchestrator/internal/docker"
 	"github.com/nomados/nomados/services/workspace-orchestrator/internal/handler"
 	"github.com/nomados/nomados/services/workspace-orchestrator/internal/health"
 	wsnats "github.com/nomados/nomados/services/workspace-orchestrator/internal/nats"
+	"github.com/nomados/nomados/services/workspace-orchestrator/internal/repository"
 	"github.com/nomados/nomados/services/workspace-orchestrator/internal/service"
 	"google.golang.org/grpc"
 	grpchealth "google.golang.org/grpc/health"
@@ -26,15 +28,37 @@ func main() {
 	if natsURL == "" {
 		natsURL = "nats://localhost:4222"
 	}
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		dbURL = "postgres://nomados:nomados_dev@localhost:5432/nomados?sslmode=disable"
+	}
 	listenAddr := os.Getenv("WORKSPACE_SERVICE_ADDR")
 	if listenAddr == "" {
 		listenAddr = ":50053"
 	}
 
-	// Connect to Docker
-	dockerClient, err := docker.NewDockerClient()
+	ctx := context.Background()
+
+	// Connect to PostgreSQL
+	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
-		log.Fatalf("failed to connect to Docker: %v", err)
+		log.Fatalf("failed to connect to database: %v", err)
+	}
+	if err := pool.Ping(ctx); err != nil {
+		log.Fatalf("failed to ping database: %v", err)
+	}
+
+	// Connect to Docker
+	var dockerClient docker.DockerClient
+	if os.Getenv("DOCKER_ENABLED") != "false" {
+		dc, err := docker.NewDockerClient()
+		if err != nil {
+			log.Fatalf("failed to connect to Docker: %v", err)
+		}
+		dockerClient = dc
+	} else {
+		log.Println("DOCKER_ENABLED=false, using mock Docker client")
+		dockerClient = docker.NewMockClient()
 	}
 	// Connect to NATS
 	pub, err := wsnats.NewPublisher(natsURL)
@@ -43,7 +67,8 @@ func main() {
 	}
 	// Create services
 	logger := logging.NewLogger("workspace-orchestrator", nil)
-	svc := service.NewWorkspaceService(dockerClient, logger, pub)
+	repo := repository.NewPostgresRepository(pool)
+	svc := service.NewWorkspaceService(dockerClient, repo, logger, pub)
 	workspaceHandler := handler.NewWorkspaceServiceHandler(svc)
 
 	// Start gRPC server
@@ -112,6 +137,8 @@ func main() {
 	pub.Close()
 	log.Println("closing Docker client...")
 	dockerClient.Close()
+	log.Println("closing database connection...")
+	pool.Close()
 
 	log.Println("shutdown complete")
 }

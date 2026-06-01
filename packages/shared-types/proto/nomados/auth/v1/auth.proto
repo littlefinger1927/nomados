@@ -20,12 +20,22 @@ service AuthService {
   rpc LoginVerify(LoginVerifyRequest) returns (LoginVerifyResponse) {
     option (google.api.http) = {post: "/v1/auth/login_verify" body: "*"};
   }
+  rpc AddCredential(AddCredentialRequest) returns (AddCredentialResponse) {
+    option (google.api.http) = {post: "/v1/auth/add_credential" body: "*"};
+  }
+  rpc ListCredentials(ListCredentialsRequest) returns (ListCredentialsResponse) {
+    option (google.api.http) = {post: "/v1/auth/list_credentials" body: "*"};
+  }
+  rpc RemoveCredential(RemoveCredentialRequest) returns (nomados.common.v1.Empty) {
+    option (google.api.http) = {post: "/v1/auth/remove_credential" body: "*"};
+  }
 }
 
 message RegisterRequest {
   string username = 1;
   bytes device_public_key = 2;
   string device_attestation = 3;
+  string device_name = 4;
 }
 
 message RegisterResponse {
@@ -47,6 +57,7 @@ message RegisterVerifyResponse {
 
 message LoginRequest {
   bytes device_public_key = 1;
+  string username = 2;
 }
 
 message LoginResponse {
@@ -65,4 +76,42 @@ message LoginVerifyResponse {
   string refresh_token = 2;
   nomados.common.v1.UUID session_id = 3;
   nomados.common.v1.UUID device_id = 4;
+}
+
+message AddCredentialRequest {
+  nomados.common.v1.UUID user_id = 1;
+  string device_name = 2;
+}
+
+message AddCredentialResponse {
+  bytes webauthn_challenge = 1;
+  nomados.common.v1.UUID device_id = 2;
+}
+
+message VerifyAddCredentialRequest {
+  bytes credential_response = 1;
+  bytes device_signature = 2;
+  nomados.common.v1.UUID user_id = 3;
+  nomados.common.v1.UUID device_id = 4;
+}
+
+message ListCredentialsRequest {
+  nomados.common.v1.UUID user_id = 1;
+}
+
+message ListCredentialsResponse {
+  repeated CredentialInfo credentials = 1;
+}
+
+message CredentialInfo {
+  nomados.common.v1.UUID device_id = 1;
+  string device_name = 2;
+  string attestation_type = 3;
+  int64 created_at = 4;
+  int64 last_seen = 5;
+}
+
+message RemoveCredentialRequest {
+  nomados.common.v1.UUID user_id = 1;
+  nomados.common.v1.UUID device_id = 2;
 }

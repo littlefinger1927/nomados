@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Input, Card } from '@nomados/ui-components';
+import { setSessionToken, setRefreshToken } from '../../lib/auth';
 
 const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:8080';
 
@@ -123,7 +124,8 @@ export default function LoginPage() {
     if (!finishRes.ok) throw new Error('Registration failed');
 
     const data = await finishRes.json();
-    localStorage.setItem('nomados-session', data.token);
+    setSessionToken(data.token);
+    if (data.refresh_token) setRefreshToken(data.refresh_token);
     router.push('/workspaces');
   };
 
@@ -185,7 +187,8 @@ export default function LoginPage() {
     if (!finishRes.ok) throw new Error('Login failed');
 
     const data = await finishRes.json();
-    localStorage.setItem('nomados-session', data.token);
+    setSessionToken(data.token);
+    if (data.refresh_token) setRefreshToken(data.refresh_token);
     router.push('/workspaces');
   };
 
@@ -196,7 +199,7 @@ export default function LoginPage() {
       iat: Date.now(),
       exp: Date.now() + 86400000,
     }));
-    localStorage.setItem('nomados-session', mockToken);
+    setSessionToken(mockToken);
     router.push('/workspaces');
   };
 

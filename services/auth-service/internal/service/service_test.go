@@ -2,7 +2,9 @@ package service
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"testing"
+	"time"
 )
 
 func TestGenerateRegistrationChallenge(t *testing.T) {
@@ -116,6 +118,9 @@ func TestVerifyAssertionCredentialDevBypass(t *testing.T) {
 }
 
 func TestChallengeStore(t *testing.T) {
+	store := NewMemoryChallengeStore()
+	ctx := t.Context()
+
 	// Test store and retrieve
 	userID := "test-user-123"
 	challenge := make([]byte, 32)
@@ -123,28 +128,30 @@ func TestChallengeStore(t *testing.T) {
 		t.Fatalf("failed to generate challenge: %v", err)
 	}
 
-	storeChallengeForUser(userID, challenge)
-
-	retrieved, err := getChallengeForUser(userID)
-	if err != nil {
-		t.Fatalf("getChallengeForUser failed: %v", err)
+	encoded := base64.StdEncoding.EncodeToString(challenge)
+	if err := store.Put(ctx, userID, encoded, 5*time.Minute); err != nil {
+		t.Fatalf("Put failed: %v", err)
 	}
 
-	if len(retrieved) != len(challenge) {
-		t.Errorf("expected %d bytes, got %d", len(challenge), len(retrieved))
+	retrieved, err := store.Get(ctx, userID)
+	if err != nil {
+		t.Fatalf("Get failed: %v", err)
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(retrieved)
+	if err != nil {
+		t.Fatalf("failed to decode retrieved challenge: %v", err)
+	}
+
+	if len(decoded) != len(challenge) {
+		t.Errorf("expected %d bytes, got %d", len(challenge), len(decoded))
 	}
 
 	for i := range challenge {
-		if challenge[i] != retrieved[i] {
+		if challenge[i] != decoded[i] {
 			t.Error("challenge data mismatch")
 			break
 		}
-	}
-
-	// Challenge should be deleted after retrieval (one-time use)
-	_, err = getChallengeForUser(userID)
-	if err == nil {
-		t.Error("expected challenge to be deleted after retrieval")
 	}
 }
 

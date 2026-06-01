@@ -89,6 +89,7 @@ type Workspace struct {
 	State         WorkspaceState         `protobuf:"varint,4,opt,name=state,proto3,enum=nomados.workspace.v1.WorkspaceState" json:"state,omitempty"`
 	CreatedAt     int64                  `protobuf:"varint,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt     int64                  `protobuf:"varint,6,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	NovncPort     int32                  `protobuf:"varint,7,opt,name=novnc_port,json=novncPort,proto3" json:"novnc_port,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -161,6 +162,13 @@ func (x *Workspace) GetCreatedAt() int64 {
 func (x *Workspace) GetUpdatedAt() int64 {
 	if x != nil {
 		return x.UpdatedAt
+	}
+	return 0
+}
+
+func (x *Workspace) GetNovncPort() int32 {
+	if x != nil {
+		return x.NovncPort
 	}
 	return 0
 }
@@ -525,6 +533,50 @@ func (x *StopWorkspaceRequest) GetId() *v1.UUID {
 	return nil
 }
 
+type StartWorkspaceRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            *v1.UUID               `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartWorkspaceRequest) Reset() {
+	*x = StartWorkspaceRequest{}
+	mi := &file_nomados_workspace_v1_workspace_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartWorkspaceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartWorkspaceRequest) ProtoMessage() {}
+
+func (x *StartWorkspaceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_nomados_workspace_v1_workspace_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartWorkspaceRequest.ProtoReflect.Descriptor instead.
+func (*StartWorkspaceRequest) Descriptor() ([]byte, []int) {
+	return file_nomados_workspace_v1_workspace_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *StartWorkspaceRequest) GetId() *v1.UUID {
+	if x != nil {
+		return x.Id
+	}
+	return nil
+}
+
 type DestroyWorkspaceRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            *v1.UUID               `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -534,7 +586,7 @@ type DestroyWorkspaceRequest struct {
 
 func (x *DestroyWorkspaceRequest) Reset() {
 	*x = DestroyWorkspaceRequest{}
-	mi := &file_nomados_workspace_v1_workspace_proto_msgTypes[9]
+	mi := &file_nomados_workspace_v1_workspace_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -546,7 +598,7 @@ func (x *DestroyWorkspaceRequest) String() string {
 func (*DestroyWorkspaceRequest) ProtoMessage() {}
 
 func (x *DestroyWorkspaceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_nomados_workspace_v1_workspace_proto_msgTypes[9]
+	mi := &file_nomados_workspace_v1_workspace_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -559,7 +611,7 @@ func (x *DestroyWorkspaceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DestroyWorkspaceRequest.ProtoReflect.Descriptor instead.
 func (*DestroyWorkspaceRequest) Descriptor() ([]byte, []int) {
-	return file_nomados_workspace_v1_workspace_proto_rawDescGZIP(), []int{9}
+	return file_nomados_workspace_v1_workspace_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *DestroyWorkspaceRequest) GetId() *v1.UUID {
@@ -573,7 +625,7 @@ var File_nomados_workspace_v1_workspace_proto protoreflect.FileDescriptor
 
 const file_nomados_workspace_v1_workspace_proto_rawDesc = "" +
 	"\n" +
-	"$nomados/workspace/v1/workspace.proto\x12\x14nomados.workspace.v1\x1a\x1enomados/common/v1/common.proto\x1a\x1cgoogle/api/annotations.proto\"\xf4\x01\n" +
+	"$nomados/workspace/v1/workspace.proto\x12\x14nomados.workspace.v1\x1a\x1enomados/common/v1/common.proto\x1a\x1cgoogle/api/annotations.proto\"\x93\x02\n" +
 	"\tWorkspace\x12'\n" +
 	"\x02id\x18\x01 \x01(\v2\x17.nomados.common.v1.UUIDR\x02id\x120\n" +
 	"\auser_id\x18\x02 \x01(\v2\x17.nomados.common.v1.UUIDR\x06userId\x12\x12\n" +
@@ -582,7 +634,9 @@ const file_nomados_workspace_v1_workspace_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x05 \x01(\x03R\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\x06 \x01(\x03R\tupdatedAt\"^\n" +
+	"updated_at\x18\x06 \x01(\x03R\tupdatedAt\x12\x1d\n" +
+	"\n" +
+	"novnc_port\x18\a \x01(\x05R\tnovncPort\"^\n" +
 	"\x16CreateWorkspaceRequest\x120\n" +
 	"\auser_id\x18\x01 \x01(\v2\x17.nomados.common.v1.UUIDR\x06userId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\"X\n" +
@@ -601,6 +655,8 @@ const file_nomados_workspace_v1_workspace_proto_rawDesc = "" +
 	"\x16ResumeWorkspaceRequest\x12'\n" +
 	"\x02id\x18\x01 \x01(\v2\x17.nomados.common.v1.UUIDR\x02id\"?\n" +
 	"\x14StopWorkspaceRequest\x12'\n" +
+	"\x02id\x18\x01 \x01(\v2\x17.nomados.common.v1.UUIDR\x02id\"@\n" +
+	"\x15StartWorkspaceRequest\x12'\n" +
 	"\x02id\x18\x01 \x01(\v2\x17.nomados.common.v1.UUIDR\x02id\"B\n" +
 	"\x17DestroyWorkspaceRequest\x12'\n" +
 	"\x02id\x18\x01 \x01(\v2\x17.nomados.common.v1.UUIDR\x02id*s\n" +
@@ -611,14 +667,15 @@ const file_nomados_workspace_v1_workspace_proto_rawDesc = "" +
 	"\n" +
 	"\x06PAUSED\x10\x03\x12\f\n" +
 	"\bSTOPPING\x10\x04\x12\v\n" +
-	"\aSTOPPED\x10\x052\xea\x06\n" +
+	"\aSTOPPED\x10\x052\xe1\a\n" +
 	"\x10WorkspaceService\x12\x86\x01\n" +
 	"\x06Create\x12,.nomados.workspace.v1.CreateWorkspaceRequest\x1a-.nomados.workspace.v1.CreateWorkspaceResponse\"\x1f\x82\xd3\xe4\x93\x02\x19:\x01*\"\x14/v1/workspace/create\x12o\n" +
 	"\x03Get\x12).nomados.workspace.v1.GetWorkspaceRequest\x1a\x1f.nomados.workspace.v1.Workspace\"\x1c\x82\xd3\xe4\x93\x02\x16:\x01*\"\x11/v1/workspace/get\x12\x80\x01\n" +
 	"\x04List\x12+.nomados.workspace.v1.ListWorkspacesRequest\x1a,.nomados.workspace.v1.ListWorkspacesResponse\"\x1d\x82\xd3\xe4\x93\x02\x17:\x01*\"\x12/v1/workspace/list\x12u\n" +
 	"\x05Pause\x12+.nomados.workspace.v1.PauseWorkspaceRequest\x1a\x1f.nomados.workspace.v1.Workspace\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\"\x13/v1/workspace/pause\x12x\n" +
 	"\x06Resume\x12,.nomados.workspace.v1.ResumeWorkspaceRequest\x1a\x1f.nomados.workspace.v1.Workspace\"\x1f\x82\xd3\xe4\x93\x02\x19:\x01*\"\x14/v1/workspace/resume\x12r\n" +
-	"\x04Stop\x12*.nomados.workspace.v1.StopWorkspaceRequest\x1a\x1f.nomados.workspace.v1.Workspace\"\x1d\x82\xd3\xe4\x93\x02\x17:\x01*\"\x12/v1/workspace/stop\x12t\n" +
+	"\x04Stop\x12*.nomados.workspace.v1.StopWorkspaceRequest\x1a\x1f.nomados.workspace.v1.Workspace\"\x1d\x82\xd3\xe4\x93\x02\x17:\x01*\"\x12/v1/workspace/stop\x12u\n" +
+	"\x05Start\x12+.nomados.workspace.v1.StartWorkspaceRequest\x1a\x1f.nomados.workspace.v1.Workspace\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\"\x13/v1/workspace/start\x12t\n" +
 	"\aDestroy\x12-.nomados.workspace.v1.DestroyWorkspaceRequest\x1a\x18.nomados.common.v1.Empty\" \x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/v1/workspace/destroyB\xf3\x01\n" +
 	"\x18com.nomados.workspace.v1B\x0eWorkspaceProtoP\x01ZUgithub.com/nomados/nomados/packages/shared-types/gen/nomados/workspace/v1;workspacev1\xa2\x02\x03NWX\xaa\x02\x14Nomados.Workspace.V1\xca\x02\x14Nomados\\Workspace\\V1\xe2\x02 Nomados\\Workspace\\V1\\GPBMetadata\xea\x02\x16Nomados::Workspace::V1b\x06proto3"
 
@@ -635,7 +692,7 @@ func file_nomados_workspace_v1_workspace_proto_rawDescGZIP() []byte {
 }
 
 var file_nomados_workspace_v1_workspace_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_nomados_workspace_v1_workspace_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_nomados_workspace_v1_workspace_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_nomados_workspace_v1_workspace_proto_goTypes = []any{
 	(WorkspaceState)(0),             // 0: nomados.workspace.v1.WorkspaceState
 	(*Workspace)(nil),               // 1: nomados.workspace.v1.Workspace
@@ -647,42 +704,46 @@ var file_nomados_workspace_v1_workspace_proto_goTypes = []any{
 	(*PauseWorkspaceRequest)(nil),   // 7: nomados.workspace.v1.PauseWorkspaceRequest
 	(*ResumeWorkspaceRequest)(nil),  // 8: nomados.workspace.v1.ResumeWorkspaceRequest
 	(*StopWorkspaceRequest)(nil),    // 9: nomados.workspace.v1.StopWorkspaceRequest
-	(*DestroyWorkspaceRequest)(nil), // 10: nomados.workspace.v1.DestroyWorkspaceRequest
-	(*v1.UUID)(nil),                 // 11: nomados.common.v1.UUID
-	(*v1.Empty)(nil),                // 12: nomados.common.v1.Empty
+	(*StartWorkspaceRequest)(nil),   // 10: nomados.workspace.v1.StartWorkspaceRequest
+	(*DestroyWorkspaceRequest)(nil), // 11: nomados.workspace.v1.DestroyWorkspaceRequest
+	(*v1.UUID)(nil),                 // 12: nomados.common.v1.UUID
+	(*v1.Empty)(nil),                // 13: nomados.common.v1.Empty
 }
 var file_nomados_workspace_v1_workspace_proto_depIdxs = []int32{
-	11, // 0: nomados.workspace.v1.Workspace.id:type_name -> nomados.common.v1.UUID
-	11, // 1: nomados.workspace.v1.Workspace.user_id:type_name -> nomados.common.v1.UUID
+	12, // 0: nomados.workspace.v1.Workspace.id:type_name -> nomados.common.v1.UUID
+	12, // 1: nomados.workspace.v1.Workspace.user_id:type_name -> nomados.common.v1.UUID
 	0,  // 2: nomados.workspace.v1.Workspace.state:type_name -> nomados.workspace.v1.WorkspaceState
-	11, // 3: nomados.workspace.v1.CreateWorkspaceRequest.user_id:type_name -> nomados.common.v1.UUID
+	12, // 3: nomados.workspace.v1.CreateWorkspaceRequest.user_id:type_name -> nomados.common.v1.UUID
 	1,  // 4: nomados.workspace.v1.CreateWorkspaceResponse.workspace:type_name -> nomados.workspace.v1.Workspace
-	11, // 5: nomados.workspace.v1.GetWorkspaceRequest.id:type_name -> nomados.common.v1.UUID
-	11, // 6: nomados.workspace.v1.ListWorkspacesRequest.user_id:type_name -> nomados.common.v1.UUID
+	12, // 5: nomados.workspace.v1.GetWorkspaceRequest.id:type_name -> nomados.common.v1.UUID
+	12, // 6: nomados.workspace.v1.ListWorkspacesRequest.user_id:type_name -> nomados.common.v1.UUID
 	1,  // 7: nomados.workspace.v1.ListWorkspacesResponse.workspaces:type_name -> nomados.workspace.v1.Workspace
-	11, // 8: nomados.workspace.v1.PauseWorkspaceRequest.id:type_name -> nomados.common.v1.UUID
-	11, // 9: nomados.workspace.v1.ResumeWorkspaceRequest.id:type_name -> nomados.common.v1.UUID
-	11, // 10: nomados.workspace.v1.StopWorkspaceRequest.id:type_name -> nomados.common.v1.UUID
-	11, // 11: nomados.workspace.v1.DestroyWorkspaceRequest.id:type_name -> nomados.common.v1.UUID
-	2,  // 12: nomados.workspace.v1.WorkspaceService.Create:input_type -> nomados.workspace.v1.CreateWorkspaceRequest
-	4,  // 13: nomados.workspace.v1.WorkspaceService.Get:input_type -> nomados.workspace.v1.GetWorkspaceRequest
-	5,  // 14: nomados.workspace.v1.WorkspaceService.List:input_type -> nomados.workspace.v1.ListWorkspacesRequest
-	7,  // 15: nomados.workspace.v1.WorkspaceService.Pause:input_type -> nomados.workspace.v1.PauseWorkspaceRequest
-	8,  // 16: nomados.workspace.v1.WorkspaceService.Resume:input_type -> nomados.workspace.v1.ResumeWorkspaceRequest
-	9,  // 17: nomados.workspace.v1.WorkspaceService.Stop:input_type -> nomados.workspace.v1.StopWorkspaceRequest
-	10, // 18: nomados.workspace.v1.WorkspaceService.Destroy:input_type -> nomados.workspace.v1.DestroyWorkspaceRequest
-	3,  // 19: nomados.workspace.v1.WorkspaceService.Create:output_type -> nomados.workspace.v1.CreateWorkspaceResponse
-	1,  // 20: nomados.workspace.v1.WorkspaceService.Get:output_type -> nomados.workspace.v1.Workspace
-	6,  // 21: nomados.workspace.v1.WorkspaceService.List:output_type -> nomados.workspace.v1.ListWorkspacesResponse
-	1,  // 22: nomados.workspace.v1.WorkspaceService.Pause:output_type -> nomados.workspace.v1.Workspace
-	1,  // 23: nomados.workspace.v1.WorkspaceService.Resume:output_type -> nomados.workspace.v1.Workspace
-	1,  // 24: nomados.workspace.v1.WorkspaceService.Stop:output_type -> nomados.workspace.v1.Workspace
-	12, // 25: nomados.workspace.v1.WorkspaceService.Destroy:output_type -> nomados.common.v1.Empty
-	19, // [19:26] is the sub-list for method output_type
-	12, // [12:19] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	12, // 8: nomados.workspace.v1.PauseWorkspaceRequest.id:type_name -> nomados.common.v1.UUID
+	12, // 9: nomados.workspace.v1.ResumeWorkspaceRequest.id:type_name -> nomados.common.v1.UUID
+	12, // 10: nomados.workspace.v1.StopWorkspaceRequest.id:type_name -> nomados.common.v1.UUID
+	12, // 11: nomados.workspace.v1.StartWorkspaceRequest.id:type_name -> nomados.common.v1.UUID
+	12, // 12: nomados.workspace.v1.DestroyWorkspaceRequest.id:type_name -> nomados.common.v1.UUID
+	2,  // 13: nomados.workspace.v1.WorkspaceService.Create:input_type -> nomados.workspace.v1.CreateWorkspaceRequest
+	4,  // 14: nomados.workspace.v1.WorkspaceService.Get:input_type -> nomados.workspace.v1.GetWorkspaceRequest
+	5,  // 15: nomados.workspace.v1.WorkspaceService.List:input_type -> nomados.workspace.v1.ListWorkspacesRequest
+	7,  // 16: nomados.workspace.v1.WorkspaceService.Pause:input_type -> nomados.workspace.v1.PauseWorkspaceRequest
+	8,  // 17: nomados.workspace.v1.WorkspaceService.Resume:input_type -> nomados.workspace.v1.ResumeWorkspaceRequest
+	9,  // 18: nomados.workspace.v1.WorkspaceService.Stop:input_type -> nomados.workspace.v1.StopWorkspaceRequest
+	10, // 19: nomados.workspace.v1.WorkspaceService.Start:input_type -> nomados.workspace.v1.StartWorkspaceRequest
+	11, // 20: nomados.workspace.v1.WorkspaceService.Destroy:input_type -> nomados.workspace.v1.DestroyWorkspaceRequest
+	3,  // 21: nomados.workspace.v1.WorkspaceService.Create:output_type -> nomados.workspace.v1.CreateWorkspaceResponse
+	1,  // 22: nomados.workspace.v1.WorkspaceService.Get:output_type -> nomados.workspace.v1.Workspace
+	6,  // 23: nomados.workspace.v1.WorkspaceService.List:output_type -> nomados.workspace.v1.ListWorkspacesResponse
+	1,  // 24: nomados.workspace.v1.WorkspaceService.Pause:output_type -> nomados.workspace.v1.Workspace
+	1,  // 25: nomados.workspace.v1.WorkspaceService.Resume:output_type -> nomados.workspace.v1.Workspace
+	1,  // 26: nomados.workspace.v1.WorkspaceService.Stop:output_type -> nomados.workspace.v1.Workspace
+	1,  // 27: nomados.workspace.v1.WorkspaceService.Start:output_type -> nomados.workspace.v1.Workspace
+	13, // 28: nomados.workspace.v1.WorkspaceService.Destroy:output_type -> nomados.common.v1.Empty
+	21, // [21:29] is the sub-list for method output_type
+	13, // [13:21] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_nomados_workspace_v1_workspace_proto_init() }
@@ -696,7 +757,7 @@ func file_nomados_workspace_v1_workspace_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_nomados_workspace_v1_workspace_proto_rawDesc), len(file_nomados_workspace_v1_workspace_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -29,6 +29,8 @@ type Device struct {
 	CredentialID         []byte     `json:"credential_id"`
 	CredentialPublicKey  []byte     `json:"credential_public_key"`
 	SignCount            int64      `json:"sign_count"`
+	Name                 string     `json:"name"`
+	AAGUID               []byte     `json:"aaguid"`
 }
 
 // PostgresRepository implements data access against PostgreSQL.
@@ -84,22 +86,41 @@ func (r *PostgresRepository) GetUserByUsername(ctx context.Context, username str
 func (r *PostgresRepository) CreateDevice(ctx context.Context, userID uuid.UUID, publicKey []byte, attestation string) (*Device, error) {
 	var d Device
 	err := r.pool.QueryRow(ctx,
-		`INSERT INTO devices (user_id, public_key, attestation, trusted) VALUES ($1, $2, $3, false) RETURNING id, user_id, public_key, attestation, trusted, last_seen, created_at, credential_id, credential_public_key, sign_count`,
+		`INSERT INTO devices (user_id, public_key, attestation, trusted) VALUES ($1, $2, $3, false) RETURNING id, user_id, public_key, attestation, trusted, last_seen, created_at, credential_id, credential_public_key, sign_count, name`,
 		userID, publicKey, attestation,
-	).Scan(&d.ID, &d.UserID, &d.PublicKey, &d.Attestation, &d.Trusted, &d.LastSeen, &d.CreatedAt, &d.CredentialID, &d.CredentialPublicKey, &d.SignCount)
+	).Scan(&d.ID, &d.UserID, &d.PublicKey, &d.Attestation, &d.Trusted, &d.LastSeen, &d.CreatedAt, &d.CredentialID, &d.CredentialPublicKey, &d.SignCount, &d.Name)
 	if err != nil {
 		return nil, err
 	}
 	return &d, nil
 }
 
+// CreateDeviceWithName inserts a new device with a name into the database.
+func (r *PostgresRepository) CreateDeviceWithName(ctx context.Context, userID uuid.UUID, publicKey []byte, attestation string, deviceName string) (*Device, error) {
+	var d Device
+	err := r.pool.QueryRow(ctx,
+		`INSERT INTO devices (user_id, public_key, attestation, trusted, name) VALUES ($1, $2, $3, false, $4) RETURNING id, user_id, public_key, attestation, trusted, last_seen, created_at, credential_id, credential_public_key, sign_count, name`,
+		userID, publicKey, attestation, deviceName,
+	).Scan(&d.ID, &d.UserID, &d.PublicKey, &d.Attestation, &d.Trusted, &d.LastSeen, &d.CreatedAt, &d.CredentialID, &d.CredentialPublicKey, &d.SignCount, &d.Name)
+	if err != nil {
+		return nil, err
+	}
+	return &d, nil
+}
+
+// DeleteDevice deletes a device by its ID.
+func (r *PostgresRepository) DeleteDevice(ctx context.Context, id uuid.UUID) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM devices WHERE id = $1`, id)
+	return err
+}
+
 // GetDeviceByID retrieves a device by its ID.
 func (r *PostgresRepository) GetDeviceByID(ctx context.Context, id uuid.UUID) (*Device, error) {
 	var d Device
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, user_id, public_key, attestation, trusted, last_seen, created_at, credential_id, credential_public_key, sign_count FROM devices WHERE id = $1`,
+		`SELECT id, user_id, public_key, attestation, trusted, last_seen, created_at, credential_id, credential_public_key, sign_count, name FROM devices WHERE id = $1`,
 		id,
-	).Scan(&d.ID, &d.UserID, &d.PublicKey, &d.Attestation, &d.Trusted, &d.LastSeen, &d.CreatedAt, &d.CredentialID, &d.CredentialPublicKey, &d.SignCount)
+	).Scan(&d.ID, &d.UserID, &d.PublicKey, &d.Attestation, &d.Trusted, &d.LastSeen, &d.CreatedAt, &d.CredentialID, &d.CredentialPublicKey, &d.SignCount, &d.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +130,7 @@ func (r *PostgresRepository) GetDeviceByID(ctx context.Context, id uuid.UUID) (*
 // GetDevicesByUserID retrieves all devices for a user.
 func (r *PostgresRepository) GetDevicesByUserID(ctx context.Context, userID uuid.UUID) ([]*Device, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, user_id, public_key, attestation, trusted, last_seen, created_at, credential_id, credential_public_key, sign_count FROM devices WHERE user_id = $1`,
+		`SELECT id, user_id, public_key, attestation, trusted, last_seen, created_at, credential_id, credential_public_key, sign_count, name FROM devices WHERE user_id = $1`,
 		userID,
 	)
 	if err != nil {
@@ -120,7 +141,7 @@ func (r *PostgresRepository) GetDevicesByUserID(ctx context.Context, userID uuid
 	var devices []*Device
 	for rows.Next() {
 		var d Device
-		if err := rows.Scan(&d.ID, &d.UserID, &d.PublicKey, &d.Attestation, &d.Trusted, &d.LastSeen, &d.CreatedAt, &d.CredentialID, &d.CredentialPublicKey, &d.SignCount); err != nil {
+		if err := rows.Scan(&d.ID, &d.UserID, &d.PublicKey, &d.Attestation, &d.Trusted, &d.LastSeen, &d.CreatedAt, &d.CredentialID, &d.CredentialPublicKey, &d.SignCount, &d.Name); err != nil {
 			return nil, err
 		}
 		devices = append(devices, &d)
@@ -150,9 +171,9 @@ func (r *PostgresRepository) TrustDevice(ctx context.Context, id uuid.UUID) erro
 func (r *PostgresRepository) GetDeviceByPublicKey(ctx context.Context, publicKey []byte) (*Device, error) {
 	var d Device
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, user_id, public_key, attestation, trusted, last_seen, created_at, credential_id, credential_public_key, sign_count FROM devices WHERE public_key = $1`,
+		`SELECT id, user_id, public_key, attestation, trusted, last_seen, created_at, credential_id, credential_public_key, sign_count, name FROM devices WHERE public_key = $1`,
 		publicKey,
-	).Scan(&d.ID, &d.UserID, &d.PublicKey, &d.Attestation, &d.Trusted, &d.LastSeen, &d.CreatedAt, &d.CredentialID, &d.CredentialPublicKey, &d.SignCount)
+	).Scan(&d.ID, &d.UserID, &d.PublicKey, &d.Attestation, &d.Trusted, &d.LastSeen, &d.CreatedAt, &d.CredentialID, &d.CredentialPublicKey, &d.SignCount, &d.Name)
 	if err != nil {
 		return nil, err
 	}

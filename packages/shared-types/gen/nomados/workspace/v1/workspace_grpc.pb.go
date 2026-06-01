@@ -26,6 +26,7 @@ const (
 	WorkspaceService_Pause_FullMethodName   = "/nomados.workspace.v1.WorkspaceService/Pause"
 	WorkspaceService_Resume_FullMethodName  = "/nomados.workspace.v1.WorkspaceService/Resume"
 	WorkspaceService_Stop_FullMethodName    = "/nomados.workspace.v1.WorkspaceService/Stop"
+	WorkspaceService_Start_FullMethodName   = "/nomados.workspace.v1.WorkspaceService/Start"
 	WorkspaceService_Destroy_FullMethodName = "/nomados.workspace.v1.WorkspaceService/Destroy"
 )
 
@@ -39,6 +40,7 @@ type WorkspaceServiceClient interface {
 	Pause(ctx context.Context, in *PauseWorkspaceRequest, opts ...grpc.CallOption) (*Workspace, error)
 	Resume(ctx context.Context, in *ResumeWorkspaceRequest, opts ...grpc.CallOption) (*Workspace, error)
 	Stop(ctx context.Context, in *StopWorkspaceRequest, opts ...grpc.CallOption) (*Workspace, error)
+	Start(ctx context.Context, in *StartWorkspaceRequest, opts ...grpc.CallOption) (*Workspace, error)
 	Destroy(ctx context.Context, in *DestroyWorkspaceRequest, opts ...grpc.CallOption) (*v1.Empty, error)
 }
 
@@ -110,6 +112,16 @@ func (c *workspaceServiceClient) Stop(ctx context.Context, in *StopWorkspaceRequ
 	return out, nil
 }
 
+func (c *workspaceServiceClient) Start(ctx context.Context, in *StartWorkspaceRequest, opts ...grpc.CallOption) (*Workspace, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Workspace)
+	err := c.cc.Invoke(ctx, WorkspaceService_Start_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *workspaceServiceClient) Destroy(ctx context.Context, in *DestroyWorkspaceRequest, opts ...grpc.CallOption) (*v1.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(v1.Empty)
@@ -130,6 +142,7 @@ type WorkspaceServiceServer interface {
 	Pause(context.Context, *PauseWorkspaceRequest) (*Workspace, error)
 	Resume(context.Context, *ResumeWorkspaceRequest) (*Workspace, error)
 	Stop(context.Context, *StopWorkspaceRequest) (*Workspace, error)
+	Start(context.Context, *StartWorkspaceRequest) (*Workspace, error)
 	Destroy(context.Context, *DestroyWorkspaceRequest) (*v1.Empty, error)
 	mustEmbedUnimplementedWorkspaceServiceServer()
 }
@@ -158,6 +171,9 @@ func (UnimplementedWorkspaceServiceServer) Resume(context.Context, *ResumeWorksp
 }
 func (UnimplementedWorkspaceServiceServer) Stop(context.Context, *StopWorkspaceRequest) (*Workspace, error) {
 	return nil, status.Error(codes.Unimplemented, "method Stop not implemented")
+}
+func (UnimplementedWorkspaceServiceServer) Start(context.Context, *StartWorkspaceRequest) (*Workspace, error) {
+	return nil, status.Error(codes.Unimplemented, "method Start not implemented")
 }
 func (UnimplementedWorkspaceServiceServer) Destroy(context.Context, *DestroyWorkspaceRequest) (*v1.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method Destroy not implemented")
@@ -291,6 +307,24 @@ func _WorkspaceService_Stop_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkspaceService_Start_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartWorkspaceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkspaceServiceServer).Start(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkspaceService_Start_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkspaceServiceServer).Start(ctx, req.(*StartWorkspaceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _WorkspaceService_Destroy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DestroyWorkspaceRequest)
 	if err := dec(in); err != nil {
@@ -339,6 +373,10 @@ var WorkspaceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Stop",
 			Handler:    _WorkspaceService_Stop_Handler,
+		},
+		{
+			MethodName: "Start",
+			Handler:    _WorkspaceService_Start_Handler,
 		},
 		{
 			MethodName: "Destroy",

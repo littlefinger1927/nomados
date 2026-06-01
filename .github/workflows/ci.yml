@@ -65,7 +65,7 @@ jobs:
 
       - name: Integration tests
         working-directory: tests/integration
-        run: go test ./... || true
+        run: go test ./...
 
       - name: Go vet
         run: |

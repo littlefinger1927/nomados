@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { isAuthenticated } from '../../lib/auth';
+import { Sidebar } from '@nomados/ui-components';
 
 export default function WorkspacesLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -16,6 +18,14 @@ export default function WorkspacesLayout({ children }: { children: React.ReactNo
     setReady(true);
   }, [router]);
 
+  const handleNavigate = (path: string) => {
+    router.push(path);
+  };
+
+  const handleLogout = () => {
+    import('../../lib/auth').then(({ logout }) => logout());
+  };
+
   if (!ready) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-nomados-background">
@@ -24,5 +34,19 @@ export default function WorkspacesLayout({ children }: { children: React.ReactNo
     );
   }
 
-  return <>{children}</>;
+  // Determine active path for sidebar highlighting
+  const activePath = pathname.startsWith('/settings') ? '/settings/devices' : '/workspaces';
+
+  return (
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar
+        activePath={activePath}
+        onNavigate={handleNavigate}
+        onLogout={handleLogout}
+      />
+      <main className="flex-1 overflow-auto">
+        {children}
+      </main>
+    </div>
+  );
 }

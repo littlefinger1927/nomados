@@ -10,6 +10,7 @@ import (
 	"github.com/nomados/nomados/packages/logging"
 	"github.com/nomados/nomados/services/workspace-orchestrator/internal/docker"
 	"github.com/nomados/nomados/services/workspace-orchestrator/internal/nats"
+	"github.com/nomados/nomados/services/workspace-orchestrator/internal/repository"
 )
 
 // WorkspaceState represents the lifecycle state of a workspace.
@@ -29,7 +30,7 @@ var validTransitions = map[WorkspaceState][]WorkspaceState{
 	StateRunning:  {StatePaused, StateStopping},
 	StatePaused:   {StateRunning, StateStopping},
 	StateStopping: {StateStopped},
-	StateStopped:  {},
+	StateStopped:  {StateCreating},
 }
 
 // Workspace represents a user workspace.
@@ -40,6 +41,22 @@ type Workspace struct {
 	State     WorkspaceState
 	CreatedAt int64
 	UpdatedAt int64
+	NoVNCPort int
+}
+
+// persistState writes the current workspace state to the database.
+func (s *WorkspaceService) persistState(ctx context.Context, workspaceID string, state WorkspaceState) {
+	if s.repo == nil {
+		return
+	}
+	wsUUID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		s.logger.Warn("failed to parse workspace ID for persistence", "workspace_id", workspaceID, "error", err)
+		return
+	}
+	if err := s.repo.UpdateWorkspaceState(ctx, wsUUID, string(state)); err != nil {
+		s.logger.Warn("failed to persist workspace state to database", "workspace_id", workspaceID, "state", state, "error", err)
+	}
 }
 
 // IsValidTransition checks whether a state transition is valid.
@@ -58,17 +75,19 @@ func IsValidTransition(from, to WorkspaceState) bool {
 
 // WorkspaceService provides business logic for workspace lifecycle.
 type WorkspaceService struct {
-	docker  docker.DockerClient
-	logger  *logging.Logger
-	nats   *nats.Publisher
-	mu     sync.RWMutex
-	store  map[string]*Workspace // in-memory store for Phase 1
+	docker docker.DockerClient
+	repo   *repository.PostgresRepository
+	logger *logging.Logger
+	nats  *nats.Publisher
+	mu    sync.RWMutex
+	store map[string]*Workspace // in-memory cache
 }
 
 // NewWorkspaceService creates a new WorkspaceService.
-func NewWorkspaceService(dockerClient docker.DockerClient, logger *logging.Logger, pub *nats.Publisher) *WorkspaceService {
+func NewWorkspaceService(dockerClient docker.DockerClient, repo *repository.PostgresRepository, logger *logging.Logger, pub *nats.Publisher) *WorkspaceService {
 	return &WorkspaceService{
 		docker: dockerClient,
+		repo:   repo,
 		logger: logger,
 		nats:   pub,
 		store:  make(map[string]*Workspace),
@@ -93,6 +112,14 @@ func (s *WorkspaceService) CreateWorkspace(ctx context.Context, userID, name str
 	s.store[workspaceID] = ws
 	s.mu.Unlock()
 
+	// Persist to database
+	if s.repo != nil {
+		userUUID, _ := uuid.Parse(userID)
+		if _, err := s.repo.CreateWorkspace(ctx, userUUID, name, string(StateCreating), 0); err != nil {
+			s.logger.Warn("failed to persist workspace to database", "workspace_id", workspaceID, "error", err)
+		}
+	}
+
 	s.logger.Info("creating workspace", "workspace_id", workspaceID, "user_id", userID, "name", name)
 
 	// Create Docker container
@@ -107,6 +134,14 @@ func (s *WorkspaceService) CreateWorkspace(ctx context.Context, userID, name str
 	// Transition to running state
 	ws.State = StateRunning
 	ws.UpdatedAt = time.Now().Unix()
+
+	// Persist state change to database
+	if s.repo != nil {
+		wsUUID, _ := uuid.Parse(workspaceID)
+		if err := s.repo.UpdateWorkspaceState(ctx, wsUUID, string(StateRunning)); err != nil {
+			s.logger.Warn("failed to persist workspace state to database", "workspace_id", workspaceID, "error", err)
+		}
+	}
 
 	s.logger.Info("workspace created", "workspace_id", workspaceID, "user_id", userID, "name", name)
 
@@ -170,6 +205,8 @@ func (s *WorkspaceService) PauseWorkspace(ctx context.Context, workspaceID strin
 	ws.UpdatedAt = time.Now().Unix()
 	s.mu.Unlock()
 
+	s.persistState(ctx, workspaceID, StatePaused)
+
 	s.logger.Info("workspace paused", "workspace_id", workspaceID)
 
 	if s.nats != nil {
@@ -204,6 +241,8 @@ func (s *WorkspaceService) ResumeWorkspace(ctx context.Context, workspaceID stri
 	ws.State = StateRunning
 	ws.UpdatedAt = time.Now().Unix()
 	s.mu.Unlock()
+
+	s.persistState(ctx, workspaceID, StateRunning)
 
 	s.logger.Info("workspace resumed", "workspace_id", workspaceID)
 
@@ -246,6 +285,8 @@ func (s *WorkspaceService) StopWorkspace(ctx context.Context, workspaceID string
 	ws.UpdatedAt = time.Now().Unix()
 	s.mu.Unlock()
 
+	s.persistState(ctx, workspaceID, StateStopped)
+
 	s.logger.Info("workspace stopped", "workspace_id", workspaceID)
 
 	if s.nats != nil {
@@ -282,6 +323,14 @@ func (s *WorkspaceService) DestroyWorkspace(ctx context.Context, workspaceID str
 	delete(s.store, workspaceID)
 	s.mu.Unlock()
 
+	// Delete from database
+	if s.repo != nil {
+		wsUUID, _ := uuid.Parse(workspaceID)
+		if err := s.repo.DeleteWorkspace(ctx, wsUUID); err != nil {
+			s.logger.Warn("failed to delete workspace from database", "workspace_id", workspaceID, "error", err)
+		}
+	}
+
 	s.logger.Info("workspace destroyed", "workspace_id", workspaceID)
 
 	if s.nats != nil {
@@ -291,4 +340,52 @@ func (s *WorkspaceService) DestroyWorkspace(ctx context.Context, workspaceID str
 	}
 
 	return nil
+}
+
+// StartWorkspace starts a stopped workspace by recreating its container.
+func (s *WorkspaceService) StartWorkspace(ctx context.Context, workspaceID string) (*Workspace, error) {
+	s.mu.Lock()
+	ws, ok := s.store[workspaceID]
+	if !ok {
+		s.mu.Unlock()
+		return nil, fmt.Errorf("workspace %s not found", workspaceID)
+	}
+
+	if !IsValidTransition(ws.State, StateCreating) {
+		s.mu.Unlock()
+		return nil, fmt.Errorf("invalid transition: cannot start workspace in state %s", ws.State)
+	}
+
+	ws.State = StateCreating
+	ws.UpdatedAt = time.Now().Unix()
+	s.mu.Unlock()
+
+	// Recreate the container
+	if s.docker != nil {
+		if err := s.docker.CreateWorkspace(ctx, workspaceID, ws.UserID); err != nil {
+			s.logger.Error("failed to recreate workspace container", "workspace_id", workspaceID, "error", err)
+			s.mu.Lock()
+			ws.State = StateStopped
+			ws.UpdatedAt = time.Now().Unix()
+			s.mu.Unlock()
+			return nil, fmt.Errorf("failed to start workspace: %w", err)
+		}
+	}
+
+	s.mu.Lock()
+	ws.State = StateRunning
+	ws.UpdatedAt = time.Now().Unix()
+	s.mu.Unlock()
+
+	s.persistState(ctx, workspaceID, StateRunning)
+
+	s.logger.Info("workspace started", "workspace_id", workspaceID)
+
+	if s.nats != nil {
+		if err := s.nats.PublishWorkspaceResumed(ctx, workspaceID); err != nil {
+			s.logger.Warn("failed to publish workspace.started event", "workspace_id", workspaceID, "error", err)
+		}
+	}
+
+	return ws, nil
 }

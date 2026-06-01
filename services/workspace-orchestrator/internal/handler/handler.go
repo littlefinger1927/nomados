@@ -46,6 +46,7 @@ func toProtoWorkspace(ws *service.Workspace) *workspacev1.Workspace {
 		State:     state,
 		CreatedAt: ws.CreatedAt,
 		UpdatedAt: ws.UpdatedAt,
+		NovncPort: int32(ws.NoVNCPort),
 	}
 }
 
@@ -123,6 +124,18 @@ func (h *WorkspaceServiceHandler) Stop(ctx context.Context, req *workspacev1.Sto
 	id := req.GetId().GetValue()
 
 	ws, err := h.svc.StopWorkspace(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return toProtoWorkspace(ws), nil
+}
+
+// Start handles the gRPC Start RPC.
+func (h *WorkspaceServiceHandler) Start(ctx context.Context, req *workspacev1.StartWorkspaceRequest) (*workspacev1.Workspace, error) {
+	id := req.GetId().GetValue()
+
+	ws, err := h.svc.StartWorkspace(ctx, id)
 	if err != nil {
 		return nil, err
 	}

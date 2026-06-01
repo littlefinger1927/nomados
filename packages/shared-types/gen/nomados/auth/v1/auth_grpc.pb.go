@@ -8,6 +8,7 @@ package authv1
 
 import (
 	context "context"
+	v1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/common/v1"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -19,10 +20,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthService_Register_FullMethodName       = "/nomados.auth.v1.AuthService/Register"
-	AuthService_RegisterVerify_FullMethodName = "/nomados.auth.v1.AuthService/RegisterVerify"
-	AuthService_Login_FullMethodName          = "/nomados.auth.v1.AuthService/Login"
-	AuthService_LoginVerify_FullMethodName    = "/nomados.auth.v1.AuthService/LoginVerify"
+	AuthService_Register_FullMethodName         = "/nomados.auth.v1.AuthService/Register"
+	AuthService_RegisterVerify_FullMethodName   = "/nomados.auth.v1.AuthService/RegisterVerify"
+	AuthService_Login_FullMethodName            = "/nomados.auth.v1.AuthService/Login"
+	AuthService_LoginVerify_FullMethodName      = "/nomados.auth.v1.AuthService/LoginVerify"
+	AuthService_AddCredential_FullMethodName    = "/nomados.auth.v1.AuthService/AddCredential"
+	AuthService_ListCredentials_FullMethodName  = "/nomados.auth.v1.AuthService/ListCredentials"
+	AuthService_RemoveCredential_FullMethodName = "/nomados.auth.v1.AuthService/RemoveCredential"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -33,6 +37,9 @@ type AuthServiceClient interface {
 	RegisterVerify(ctx context.Context, in *RegisterVerifyRequest, opts ...grpc.CallOption) (*RegisterVerifyResponse, error)
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
 	LoginVerify(ctx context.Context, in *LoginVerifyRequest, opts ...grpc.CallOption) (*LoginVerifyResponse, error)
+	AddCredential(ctx context.Context, in *AddCredentialRequest, opts ...grpc.CallOption) (*AddCredentialResponse, error)
+	ListCredentials(ctx context.Context, in *ListCredentialsRequest, opts ...grpc.CallOption) (*ListCredentialsResponse, error)
+	RemoveCredential(ctx context.Context, in *RemoveCredentialRequest, opts ...grpc.CallOption) (*v1.Empty, error)
 }
 
 type authServiceClient struct {
@@ -83,6 +90,36 @@ func (c *authServiceClient) LoginVerify(ctx context.Context, in *LoginVerifyRequ
 	return out, nil
 }
 
+func (c *authServiceClient) AddCredential(ctx context.Context, in *AddCredentialRequest, opts ...grpc.CallOption) (*AddCredentialResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddCredentialResponse)
+	err := c.cc.Invoke(ctx, AuthService_AddCredential_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) ListCredentials(ctx context.Context, in *ListCredentialsRequest, opts ...grpc.CallOption) (*ListCredentialsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListCredentialsResponse)
+	err := c.cc.Invoke(ctx, AuthService_ListCredentials_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) RemoveCredential(ctx context.Context, in *RemoveCredentialRequest, opts ...grpc.CallOption) (*v1.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(v1.Empty)
+	err := c.cc.Invoke(ctx, AuthService_RemoveCredential_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthServiceServer is the server API for AuthService service.
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
@@ -91,6 +128,9 @@ type AuthServiceServer interface {
 	RegisterVerify(context.Context, *RegisterVerifyRequest) (*RegisterVerifyResponse, error)
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
 	LoginVerify(context.Context, *LoginVerifyRequest) (*LoginVerifyResponse, error)
+	AddCredential(context.Context, *AddCredentialRequest) (*AddCredentialResponse, error)
+	ListCredentials(context.Context, *ListCredentialsRequest) (*ListCredentialsResponse, error)
+	RemoveCredential(context.Context, *RemoveCredentialRequest) (*v1.Empty, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -112,6 +152,15 @@ func (UnimplementedAuthServiceServer) Login(context.Context, *LoginRequest) (*Lo
 }
 func (UnimplementedAuthServiceServer) LoginVerify(context.Context, *LoginVerifyRequest) (*LoginVerifyResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method LoginVerify not implemented")
+}
+func (UnimplementedAuthServiceServer) AddCredential(context.Context, *AddCredentialRequest) (*AddCredentialResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddCredential not implemented")
+}
+func (UnimplementedAuthServiceServer) ListCredentials(context.Context, *ListCredentialsRequest) (*ListCredentialsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListCredentials not implemented")
+}
+func (UnimplementedAuthServiceServer) RemoveCredential(context.Context, *RemoveCredentialRequest) (*v1.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveCredential not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
@@ -206,6 +255,60 @@ func _AuthService_LoginVerify_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_AddCredential_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddCredentialRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).AddCredential(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_AddCredential_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).AddCredential(ctx, req.(*AddCredentialRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_ListCredentials_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListCredentialsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).ListCredentials(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_ListCredentials_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).ListCredentials(ctx, req.(*ListCredentialsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_RemoveCredential_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveCredentialRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).RemoveCredential(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_RemoveCredential_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).RemoveCredential(ctx, req.(*RemoveCredentialRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -228,6 +331,18 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "LoginVerify",
 			Handler:    _AuthService_LoginVerify_Handler,
+		},
+		{
+			MethodName: "AddCredential",
+			Handler:    _AuthService_AddCredential_Handler,
+		},
+		{
+			MethodName: "ListCredentials",
+			Handler:    _AuthService_ListCredentials_Handler,
+		},
+		{
+			MethodName: "RemoveCredential",
+			Handler:    _AuthService_RemoveCredential_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

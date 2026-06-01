@@ -28,6 +28,7 @@ type RegisterRequest struct {
 	Username          string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
 	DevicePublicKey   []byte                 `protobuf:"bytes,2,opt,name=device_public_key,json=devicePublicKey,proto3" json:"device_public_key,omitempty"`
 	DeviceAttestation string                 `protobuf:"bytes,3,opt,name=device_attestation,json=deviceAttestation,proto3" json:"device_attestation,omitempty"`
+	DeviceName        string                 `protobuf:"bytes,4,opt,name=device_name,json=deviceName,proto3" json:"device_name,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -79,6 +80,13 @@ func (x *RegisterRequest) GetDevicePublicKey() []byte {
 func (x *RegisterRequest) GetDeviceAttestation() string {
 	if x != nil {
 		return x.DeviceAttestation
+	}
+	return ""
+}
+
+func (x *RegisterRequest) GetDeviceName() string {
+	if x != nil {
+		return x.DeviceName
 	}
 	return ""
 }
@@ -258,6 +266,7 @@ func (x *RegisterVerifyResponse) GetDeviceId() *v1.UUID {
 type LoginRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	DevicePublicKey []byte                 `protobuf:"bytes,1,opt,name=device_public_key,json=devicePublicKey,proto3" json:"device_public_key,omitempty"`
+	Username        string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -297,6 +306,13 @@ func (x *LoginRequest) GetDevicePublicKey() []byte {
 		return x.DevicePublicKey
 	}
 	return nil
+}
+
+func (x *LoginRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
 }
 
 type LoginResponse struct {
@@ -479,15 +495,405 @@ func (x *LoginVerifyResponse) GetDeviceId() *v1.UUID {
 	return nil
 }
 
+type AddCredentialRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        *v1.UUID               `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	DeviceName    string                 `protobuf:"bytes,2,opt,name=device_name,json=deviceName,proto3" json:"device_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddCredentialRequest) Reset() {
+	*x = AddCredentialRequest{}
+	mi := &file_nomados_auth_v1_auth_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddCredentialRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddCredentialRequest) ProtoMessage() {}
+
+func (x *AddCredentialRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_nomados_auth_v1_auth_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddCredentialRequest.ProtoReflect.Descriptor instead.
+func (*AddCredentialRequest) Descriptor() ([]byte, []int) {
+	return file_nomados_auth_v1_auth_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *AddCredentialRequest) GetUserId() *v1.UUID {
+	if x != nil {
+		return x.UserId
+	}
+	return nil
+}
+
+func (x *AddCredentialRequest) GetDeviceName() string {
+	if x != nil {
+		return x.DeviceName
+	}
+	return ""
+}
+
+type AddCredentialResponse struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	WebauthnChallenge []byte                 `protobuf:"bytes,1,opt,name=webauthn_challenge,json=webauthnChallenge,proto3" json:"webauthn_challenge,omitempty"`
+	DeviceId          *v1.UUID               `protobuf:"bytes,2,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *AddCredentialResponse) Reset() {
+	*x = AddCredentialResponse{}
+	mi := &file_nomados_auth_v1_auth_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddCredentialResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddCredentialResponse) ProtoMessage() {}
+
+func (x *AddCredentialResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_nomados_auth_v1_auth_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddCredentialResponse.ProtoReflect.Descriptor instead.
+func (*AddCredentialResponse) Descriptor() ([]byte, []int) {
+	return file_nomados_auth_v1_auth_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *AddCredentialResponse) GetWebauthnChallenge() []byte {
+	if x != nil {
+		return x.WebauthnChallenge
+	}
+	return nil
+}
+
+func (x *AddCredentialResponse) GetDeviceId() *v1.UUID {
+	if x != nil {
+		return x.DeviceId
+	}
+	return nil
+}
+
+type VerifyAddCredentialRequest struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	CredentialResponse []byte                 `protobuf:"bytes,1,opt,name=credential_response,json=credentialResponse,proto3" json:"credential_response,omitempty"`
+	DeviceSignature    []byte                 `protobuf:"bytes,2,opt,name=device_signature,json=deviceSignature,proto3" json:"device_signature,omitempty"`
+	UserId             *v1.UUID               `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	DeviceId           *v1.UUID               `protobuf:"bytes,4,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *VerifyAddCredentialRequest) Reset() {
+	*x = VerifyAddCredentialRequest{}
+	mi := &file_nomados_auth_v1_auth_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VerifyAddCredentialRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VerifyAddCredentialRequest) ProtoMessage() {}
+
+func (x *VerifyAddCredentialRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_nomados_auth_v1_auth_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VerifyAddCredentialRequest.ProtoReflect.Descriptor instead.
+func (*VerifyAddCredentialRequest) Descriptor() ([]byte, []int) {
+	return file_nomados_auth_v1_auth_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *VerifyAddCredentialRequest) GetCredentialResponse() []byte {
+	if x != nil {
+		return x.CredentialResponse
+	}
+	return nil
+}
+
+func (x *VerifyAddCredentialRequest) GetDeviceSignature() []byte {
+	if x != nil {
+		return x.DeviceSignature
+	}
+	return nil
+}
+
+func (x *VerifyAddCredentialRequest) GetUserId() *v1.UUID {
+	if x != nil {
+		return x.UserId
+	}
+	return nil
+}
+
+func (x *VerifyAddCredentialRequest) GetDeviceId() *v1.UUID {
+	if x != nil {
+		return x.DeviceId
+	}
+	return nil
+}
+
+type ListCredentialsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        *v1.UUID               `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListCredentialsRequest) Reset() {
+	*x = ListCredentialsRequest{}
+	mi := &file_nomados_auth_v1_auth_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCredentialsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCredentialsRequest) ProtoMessage() {}
+
+func (x *ListCredentialsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_nomados_auth_v1_auth_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCredentialsRequest.ProtoReflect.Descriptor instead.
+func (*ListCredentialsRequest) Descriptor() ([]byte, []int) {
+	return file_nomados_auth_v1_auth_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ListCredentialsRequest) GetUserId() *v1.UUID {
+	if x != nil {
+		return x.UserId
+	}
+	return nil
+}
+
+type ListCredentialsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Credentials   []*CredentialInfo      `protobuf:"bytes,1,rep,name=credentials,proto3" json:"credentials,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListCredentialsResponse) Reset() {
+	*x = ListCredentialsResponse{}
+	mi := &file_nomados_auth_v1_auth_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCredentialsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCredentialsResponse) ProtoMessage() {}
+
+func (x *ListCredentialsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_nomados_auth_v1_auth_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCredentialsResponse.ProtoReflect.Descriptor instead.
+func (*ListCredentialsResponse) Descriptor() ([]byte, []int) {
+	return file_nomados_auth_v1_auth_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ListCredentialsResponse) GetCredentials() []*CredentialInfo {
+	if x != nil {
+		return x.Credentials
+	}
+	return nil
+}
+
+type CredentialInfo struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	DeviceId        *v1.UUID               `protobuf:"bytes,1,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
+	DeviceName      string                 `protobuf:"bytes,2,opt,name=device_name,json=deviceName,proto3" json:"device_name,omitempty"`
+	AttestationType string                 `protobuf:"bytes,3,opt,name=attestation_type,json=attestationType,proto3" json:"attestation_type,omitempty"`
+	CreatedAt       int64                  `protobuf:"varint,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	LastSeen        int64                  `protobuf:"varint,5,opt,name=last_seen,json=lastSeen,proto3" json:"last_seen,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *CredentialInfo) Reset() {
+	*x = CredentialInfo{}
+	mi := &file_nomados_auth_v1_auth_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CredentialInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CredentialInfo) ProtoMessage() {}
+
+func (x *CredentialInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_nomados_auth_v1_auth_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CredentialInfo.ProtoReflect.Descriptor instead.
+func (*CredentialInfo) Descriptor() ([]byte, []int) {
+	return file_nomados_auth_v1_auth_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *CredentialInfo) GetDeviceId() *v1.UUID {
+	if x != nil {
+		return x.DeviceId
+	}
+	return nil
+}
+
+func (x *CredentialInfo) GetDeviceName() string {
+	if x != nil {
+		return x.DeviceName
+	}
+	return ""
+}
+
+func (x *CredentialInfo) GetAttestationType() string {
+	if x != nil {
+		return x.AttestationType
+	}
+	return ""
+}
+
+func (x *CredentialInfo) GetCreatedAt() int64 {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return 0
+}
+
+func (x *CredentialInfo) GetLastSeen() int64 {
+	if x != nil {
+		return x.LastSeen
+	}
+	return 0
+}
+
+type RemoveCredentialRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        *v1.UUID               `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	DeviceId      *v1.UUID               `protobuf:"bytes,2,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveCredentialRequest) Reset() {
+	*x = RemoveCredentialRequest{}
+	mi := &file_nomados_auth_v1_auth_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveCredentialRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveCredentialRequest) ProtoMessage() {}
+
+func (x *RemoveCredentialRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_nomados_auth_v1_auth_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveCredentialRequest.ProtoReflect.Descriptor instead.
+func (*RemoveCredentialRequest) Descriptor() ([]byte, []int) {
+	return file_nomados_auth_v1_auth_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *RemoveCredentialRequest) GetUserId() *v1.UUID {
+	if x != nil {
+		return x.UserId
+	}
+	return nil
+}
+
+func (x *RemoveCredentialRequest) GetDeviceId() *v1.UUID {
+	if x != nil {
+		return x.DeviceId
+	}
+	return nil
+}
+
 var File_nomados_auth_v1_auth_proto protoreflect.FileDescriptor
 
 const file_nomados_auth_v1_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x1anomados/auth/v1/auth.proto\x12\x0fnomados.auth.v1\x1a\x1enomados/common/v1/common.proto\x1a\x1cgoogle/api/annotations.proto\"\x88\x01\n" +
+	"\x1anomados/auth/v1/auth.proto\x12\x0fnomados.auth.v1\x1a\x1enomados/common/v1/common.proto\x1a\x1cgoogle/api/annotations.proto\"\xa9\x01\n" +
 	"\x0fRegisterRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12*\n" +
 	"\x11device_public_key\x18\x02 \x01(\fR\x0fdevicePublicKey\x12-\n" +
-	"\x12device_attestation\x18\x03 \x01(\tR\x11deviceAttestation\"s\n" +
+	"\x12device_attestation\x18\x03 \x01(\tR\x11deviceAttestation\x12\x1f\n" +
+	"\vdevice_name\x18\x04 \x01(\tR\n" +
+	"deviceName\"s\n" +
 	"\x10RegisterResponse\x12-\n" +
 	"\x12webauthn_challenge\x18\x01 \x01(\fR\x11webauthnChallenge\x120\n" +
 	"\auser_id\x18\x02 \x01(\v2\x17.nomados.common.v1.UUIDR\x06userId\"\xa5\x01\n" +
@@ -498,9 +904,10 @@ const file_nomados_auth_v1_auth_proto_rawDesc = "" +
 	"\x16RegisterVerifyResponse\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
 	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x124\n" +
-	"\tdevice_id\x18\x03 \x01(\v2\x17.nomados.common.v1.UUIDR\bdeviceId\":\n" +
+	"\tdevice_id\x18\x03 \x01(\v2\x17.nomados.common.v1.UUIDR\bdeviceId\"V\n" +
 	"\fLoginRequest\x12*\n" +
-	"\x11device_public_key\x18\x01 \x01(\fR\x0fdevicePublicKey\"p\n" +
+	"\x11device_public_key\x18\x01 \x01(\fR\x0fdevicePublicKey\x12\x1a\n" +
+	"\busername\x18\x02 \x01(\tR\busername\"p\n" +
 	"\rLoginResponse\x12-\n" +
 	"\x12webauthn_challenge\x18\x01 \x01(\fR\x11webauthnChallenge\x120\n" +
 	"\auser_id\x18\x02 \x01(\v2\x17.nomados.common.v1.UUIDR\x06userId\"\xa0\x01\n" +
@@ -513,12 +920,42 @@ const file_nomados_auth_v1_auth_proto_rawDesc = "" +
 	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x126\n" +
 	"\n" +
 	"session_id\x18\x03 \x01(\v2\x17.nomados.common.v1.UUIDR\tsessionId\x124\n" +
-	"\tdevice_id\x18\x04 \x01(\v2\x17.nomados.common.v1.UUIDR\bdeviceId2\xe4\x03\n" +
+	"\tdevice_id\x18\x04 \x01(\v2\x17.nomados.common.v1.UUIDR\bdeviceId\"i\n" +
+	"\x14AddCredentialRequest\x120\n" +
+	"\auser_id\x18\x01 \x01(\v2\x17.nomados.common.v1.UUIDR\x06userId\x12\x1f\n" +
+	"\vdevice_name\x18\x02 \x01(\tR\n" +
+	"deviceName\"|\n" +
+	"\x15AddCredentialResponse\x12-\n" +
+	"\x12webauthn_challenge\x18\x01 \x01(\fR\x11webauthnChallenge\x124\n" +
+	"\tdevice_id\x18\x02 \x01(\v2\x17.nomados.common.v1.UUIDR\bdeviceId\"\xe0\x01\n" +
+	"\x1aVerifyAddCredentialRequest\x12/\n" +
+	"\x13credential_response\x18\x01 \x01(\fR\x12credentialResponse\x12)\n" +
+	"\x10device_signature\x18\x02 \x01(\fR\x0fdeviceSignature\x120\n" +
+	"\auser_id\x18\x03 \x01(\v2\x17.nomados.common.v1.UUIDR\x06userId\x124\n" +
+	"\tdevice_id\x18\x04 \x01(\v2\x17.nomados.common.v1.UUIDR\bdeviceId\"J\n" +
+	"\x16ListCredentialsRequest\x120\n" +
+	"\auser_id\x18\x01 \x01(\v2\x17.nomados.common.v1.UUIDR\x06userId\"\\\n" +
+	"\x17ListCredentialsResponse\x12A\n" +
+	"\vcredentials\x18\x01 \x03(\v2\x1f.nomados.auth.v1.CredentialInfoR\vcredentials\"\xce\x01\n" +
+	"\x0eCredentialInfo\x124\n" +
+	"\tdevice_id\x18\x01 \x01(\v2\x17.nomados.common.v1.UUIDR\bdeviceId\x12\x1f\n" +
+	"\vdevice_name\x18\x02 \x01(\tR\n" +
+	"deviceName\x12)\n" +
+	"\x10attestation_type\x18\x03 \x01(\tR\x0fattestationType\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x04 \x01(\x03R\tcreatedAt\x12\x1b\n" +
+	"\tlast_seen\x18\x05 \x01(\x03R\blastSeen\"\x81\x01\n" +
+	"\x17RemoveCredentialRequest\x120\n" +
+	"\auser_id\x18\x01 \x01(\v2\x17.nomados.common.v1.UUIDR\x06userId\x124\n" +
+	"\tdevice_id\x18\x02 \x01(\v2\x17.nomados.common.v1.UUIDR\bdeviceId2\xf5\x06\n" +
 	"\vAuthService\x12m\n" +
 	"\bRegister\x12 .nomados.auth.v1.RegisterRequest\x1a!.nomados.auth.v1.RegisterResponse\"\x1c\x82\xd3\xe4\x93\x02\x16:\x01*\"\x11/v1/auth/register\x12\x86\x01\n" +
 	"\x0eRegisterVerify\x12&.nomados.auth.v1.RegisterVerifyRequest\x1a'.nomados.auth.v1.RegisterVerifyResponse\"#\x82\xd3\xe4\x93\x02\x1d:\x01*\"\x18/v1/auth/register_verify\x12a\n" +
 	"\x05Login\x12\x1d.nomados.auth.v1.LoginRequest\x1a\x1e.nomados.auth.v1.LoginResponse\"\x19\x82\xd3\xe4\x93\x02\x13:\x01*\"\x0e/v1/auth/login\x12z\n" +
-	"\vLoginVerify\x12#.nomados.auth.v1.LoginVerifyRequest\x1a$.nomados.auth.v1.LoginVerifyResponse\" \x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/v1/auth/login_verifyB\xcb\x01\n" +
+	"\vLoginVerify\x12#.nomados.auth.v1.LoginVerifyRequest\x1a$.nomados.auth.v1.LoginVerifyResponse\" \x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/v1/auth/login_verify\x12\x82\x01\n" +
+	"\rAddCredential\x12%.nomados.auth.v1.AddCredentialRequest\x1a&.nomados.auth.v1.AddCredentialResponse\"\"\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/v1/auth/add_credential\x12\x8a\x01\n" +
+	"\x0fListCredentials\x12'.nomados.auth.v1.ListCredentialsRequest\x1a(.nomados.auth.v1.ListCredentialsResponse\"$\x82\xd3\xe4\x93\x02\x1e:\x01*\"\x19/v1/auth/list_credentials\x12}\n" +
+	"\x10RemoveCredential\x12(.nomados.auth.v1.RemoveCredentialRequest\x1a\x18.nomados.common.v1.Empty\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/v1/auth/remove_credentialB\xcb\x01\n" +
 	"\x13com.nomados.auth.v1B\tAuthProtoP\x01ZKgithub.com/nomados/nomados/packages/shared-types/gen/nomados/auth/v1;authv1\xa2\x02\x03NAX\xaa\x02\x0fNomados.Auth.V1\xca\x02\x0fNomados\\Auth\\V1\xe2\x02\x1bNomados\\Auth\\V1\\GPBMetadata\xea\x02\x11Nomados::Auth::V1b\x06proto3"
 
 var (
@@ -533,39 +970,62 @@ func file_nomados_auth_v1_auth_proto_rawDescGZIP() []byte {
 	return file_nomados_auth_v1_auth_proto_rawDescData
 }
 
-var file_nomados_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_nomados_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_nomados_auth_v1_auth_proto_goTypes = []any{
-	(*RegisterRequest)(nil),        // 0: nomados.auth.v1.RegisterRequest
-	(*RegisterResponse)(nil),       // 1: nomados.auth.v1.RegisterResponse
-	(*RegisterVerifyRequest)(nil),  // 2: nomados.auth.v1.RegisterVerifyRequest
-	(*RegisterVerifyResponse)(nil), // 3: nomados.auth.v1.RegisterVerifyResponse
-	(*LoginRequest)(nil),           // 4: nomados.auth.v1.LoginRequest
-	(*LoginResponse)(nil),          // 5: nomados.auth.v1.LoginResponse
-	(*LoginVerifyRequest)(nil),     // 6: nomados.auth.v1.LoginVerifyRequest
-	(*LoginVerifyResponse)(nil),    // 7: nomados.auth.v1.LoginVerifyResponse
-	(*v1.UUID)(nil),                // 8: nomados.common.v1.UUID
+	(*RegisterRequest)(nil),            // 0: nomados.auth.v1.RegisterRequest
+	(*RegisterResponse)(nil),           // 1: nomados.auth.v1.RegisterResponse
+	(*RegisterVerifyRequest)(nil),      // 2: nomados.auth.v1.RegisterVerifyRequest
+	(*RegisterVerifyResponse)(nil),     // 3: nomados.auth.v1.RegisterVerifyResponse
+	(*LoginRequest)(nil),               // 4: nomados.auth.v1.LoginRequest
+	(*LoginResponse)(nil),              // 5: nomados.auth.v1.LoginResponse
+	(*LoginVerifyRequest)(nil),         // 6: nomados.auth.v1.LoginVerifyRequest
+	(*LoginVerifyResponse)(nil),        // 7: nomados.auth.v1.LoginVerifyResponse
+	(*AddCredentialRequest)(nil),       // 8: nomados.auth.v1.AddCredentialRequest
+	(*AddCredentialResponse)(nil),      // 9: nomados.auth.v1.AddCredentialResponse
+	(*VerifyAddCredentialRequest)(nil), // 10: nomados.auth.v1.VerifyAddCredentialRequest
+	(*ListCredentialsRequest)(nil),     // 11: nomados.auth.v1.ListCredentialsRequest
+	(*ListCredentialsResponse)(nil),    // 12: nomados.auth.v1.ListCredentialsResponse
+	(*CredentialInfo)(nil),             // 13: nomados.auth.v1.CredentialInfo
+	(*RemoveCredentialRequest)(nil),    // 14: nomados.auth.v1.RemoveCredentialRequest
+	(*v1.UUID)(nil),                    // 15: nomados.common.v1.UUID
+	(*v1.Empty)(nil),                   // 16: nomados.common.v1.Empty
 }
 var file_nomados_auth_v1_auth_proto_depIdxs = []int32{
-	8,  // 0: nomados.auth.v1.RegisterResponse.user_id:type_name -> nomados.common.v1.UUID
-	8,  // 1: nomados.auth.v1.RegisterVerifyRequest.user_id:type_name -> nomados.common.v1.UUID
-	8,  // 2: nomados.auth.v1.RegisterVerifyResponse.device_id:type_name -> nomados.common.v1.UUID
-	8,  // 3: nomados.auth.v1.LoginResponse.user_id:type_name -> nomados.common.v1.UUID
-	8,  // 4: nomados.auth.v1.LoginVerifyRequest.user_id:type_name -> nomados.common.v1.UUID
-	8,  // 5: nomados.auth.v1.LoginVerifyResponse.session_id:type_name -> nomados.common.v1.UUID
-	8,  // 6: nomados.auth.v1.LoginVerifyResponse.device_id:type_name -> nomados.common.v1.UUID
-	0,  // 7: nomados.auth.v1.AuthService.Register:input_type -> nomados.auth.v1.RegisterRequest
-	2,  // 8: nomados.auth.v1.AuthService.RegisterVerify:input_type -> nomados.auth.v1.RegisterVerifyRequest
-	4,  // 9: nomados.auth.v1.AuthService.Login:input_type -> nomados.auth.v1.LoginRequest
-	6,  // 10: nomados.auth.v1.AuthService.LoginVerify:input_type -> nomados.auth.v1.LoginVerifyRequest
-	1,  // 11: nomados.auth.v1.AuthService.Register:output_type -> nomados.auth.v1.RegisterResponse
-	3,  // 12: nomados.auth.v1.AuthService.RegisterVerify:output_type -> nomados.auth.v1.RegisterVerifyResponse
-	5,  // 13: nomados.auth.v1.AuthService.Login:output_type -> nomados.auth.v1.LoginResponse
-	7,  // 14: nomados.auth.v1.AuthService.LoginVerify:output_type -> nomados.auth.v1.LoginVerifyResponse
-	11, // [11:15] is the sub-list for method output_type
-	7,  // [7:11] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	15, // 0: nomados.auth.v1.RegisterResponse.user_id:type_name -> nomados.common.v1.UUID
+	15, // 1: nomados.auth.v1.RegisterVerifyRequest.user_id:type_name -> nomados.common.v1.UUID
+	15, // 2: nomados.auth.v1.RegisterVerifyResponse.device_id:type_name -> nomados.common.v1.UUID
+	15, // 3: nomados.auth.v1.LoginResponse.user_id:type_name -> nomados.common.v1.UUID
+	15, // 4: nomados.auth.v1.LoginVerifyRequest.user_id:type_name -> nomados.common.v1.UUID
+	15, // 5: nomados.auth.v1.LoginVerifyResponse.session_id:type_name -> nomados.common.v1.UUID
+	15, // 6: nomados.auth.v1.LoginVerifyResponse.device_id:type_name -> nomados.common.v1.UUID
+	15, // 7: nomados.auth.v1.AddCredentialRequest.user_id:type_name -> nomados.common.v1.UUID
+	15, // 8: nomados.auth.v1.AddCredentialResponse.device_id:type_name -> nomados.common.v1.UUID
+	15, // 9: nomados.auth.v1.VerifyAddCredentialRequest.user_id:type_name -> nomados.common.v1.UUID
+	15, // 10: nomados.auth.v1.VerifyAddCredentialRequest.device_id:type_name -> nomados.common.v1.UUID
+	15, // 11: nomados.auth.v1.ListCredentialsRequest.user_id:type_name -> nomados.common.v1.UUID
+	13, // 12: nomados.auth.v1.ListCredentialsResponse.credentials:type_name -> nomados.auth.v1.CredentialInfo
+	15, // 13: nomados.auth.v1.CredentialInfo.device_id:type_name -> nomados.common.v1.UUID
+	15, // 14: nomados.auth.v1.RemoveCredentialRequest.user_id:type_name -> nomados.common.v1.UUID
+	15, // 15: nomados.auth.v1.RemoveCredentialRequest.device_id:type_name -> nomados.common.v1.UUID
+	0,  // 16: nomados.auth.v1.AuthService.Register:input_type -> nomados.auth.v1.RegisterRequest
+	2,  // 17: nomados.auth.v1.AuthService.RegisterVerify:input_type -> nomados.auth.v1.RegisterVerifyRequest
+	4,  // 18: nomados.auth.v1.AuthService.Login:input_type -> nomados.auth.v1.LoginRequest
+	6,  // 19: nomados.auth.v1.AuthService.LoginVerify:input_type -> nomados.auth.v1.LoginVerifyRequest
+	8,  // 20: nomados.auth.v1.AuthService.AddCredential:input_type -> nomados.auth.v1.AddCredentialRequest
+	11, // 21: nomados.auth.v1.AuthService.ListCredentials:input_type -> nomados.auth.v1.ListCredentialsRequest
+	14, // 22: nomados.auth.v1.AuthService.RemoveCredential:input_type -> nomados.auth.v1.RemoveCredentialRequest
+	1,  // 23: nomados.auth.v1.AuthService.Register:output_type -> nomados.auth.v1.RegisterResponse
+	3,  // 24: nomados.auth.v1.AuthService.RegisterVerify:output_type -> nomados.auth.v1.RegisterVerifyResponse
+	5,  // 25: nomados.auth.v1.AuthService.Login:output_type -> nomados.auth.v1.LoginResponse
+	7,  // 26: nomados.auth.v1.AuthService.LoginVerify:output_type -> nomados.auth.v1.LoginVerifyResponse
+	9,  // 27: nomados.auth.v1.AuthService.AddCredential:output_type -> nomados.auth.v1.AddCredentialResponse
+	12, // 28: nomados.auth.v1.AuthService.ListCredentials:output_type -> nomados.auth.v1.ListCredentialsResponse
+	16, // 29: nomados.auth.v1.AuthService.RemoveCredential:output_type -> nomados.common.v1.Empty
+	23, // [23:30] is the sub-list for method output_type
+	16, // [16:23] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_nomados_auth_v1_auth_proto_init() }
@@ -579,7 +1039,7 @@ func file_nomados_auth_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_nomados_auth_v1_auth_proto_rawDesc), len(file_nomados_auth_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

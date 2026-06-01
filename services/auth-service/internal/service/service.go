@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
@@ -47,13 +48,14 @@ type RegistrationResult struct {
 
 // AuthService provides business logic for authentication flows.
 type AuthService struct {
-	repo   *repository.PostgresRepository
-	logger *logging.Logger
-	webauthn *webauthn.WebAuthn
+	repo           *repository.PostgresRepository
+	logger         *logging.Logger
+	webauthn       *webauthn.WebAuthn
+	challengeStore ChallengeStore
 }
 
 // NewAuthService creates a new AuthService.
-func NewAuthService(repo *repository.PostgresRepository) *AuthService {
+func NewAuthService(repo *repository.PostgresRepository, challengeStore ChallengeStore) *AuthService {
 	logger := logging.NewLogger("auth-service", nil)
 
 	cfg := &WebAuthnConfig{
@@ -68,9 +70,10 @@ func NewAuthService(repo *repository.PostgresRepository) *AuthService {
 	}
 
 	return &AuthService{
-		repo:     repo,
-		logger:   logger,
-		webauthn: w,
+		repo:           repo,
+		logger:         logger,
+		webauthn:       w,
+		challengeStore: challengeStore,
 	}
 }
 
@@ -109,8 +112,11 @@ func (s *AuthService) Register(ctx context.Context, username string, devicePubli
 		return nil, fmt.Errorf("failed to generate challenge: %w", err)
 	}
 
-	// Store the challenge for later verification
-	storeChallengeForUser(user.ID.String(), challenge)
+	// Store the challenge for later verification (5-minute TTL)
+	if err := s.challengeStore.Put(ctx, user.ID.String(), base64.StdEncoding.EncodeToString(challenge), 5*time.Minute); err != nil {
+		s.logger.Error("failed to store challenge", "user_id", user.ID, "error", err)
+		return nil, fmt.Errorf("failed to store challenge: %w", err)
+	}
 
 	s.logger.Info("user registered", "user_id", user.ID, "username", username)
 
@@ -166,13 +172,16 @@ func (s *AuthService) VerifyRegistration(ctx context.Context, userID uuid.UUID, 
 		}
 
 		// Look up the challenge that was stored for this user during registration
-		// For now, we reconstruct it from the devicePublicKey-based challenge store
-		// The challenge was generated during Register and sent back to the client
-		// The client should send it back in the credential response
-		// We need to retrieve it from the challenge store
-		challenge, err := getChallengeForUser(userID.String())
+		challengeStr, err := s.challengeStore.Get(ctx, userID.String())
 		if err != nil {
-			return fmt.Errorf("challenge not found or expired: %w", err)
+			return fmt.Errorf("challenge retrieval failed: %w", err)
+		}
+		if challengeStr == "" {
+			return fmt.Errorf("challenge not found or expired")
+		}
+		challenge, err := base64.StdEncoding.DecodeString(challengeStr)
+		if err != nil {
+			return fmt.Errorf("invalid challenge format: %w", err)
 		}
 
 		// Create a webauthn.User for the verification
@@ -209,6 +218,31 @@ func (s *AuthService) VerifyRegistration(ctx context.Context, userID uuid.UUID, 
 	return nil
 }
 
+// LoginByUsername looks up a user by username and returns a challenge for assertion.
+func (s *AuthService) LoginByUsername(ctx context.Context, username string) (*repository.User, []byte, error) {
+	user, err := s.repo.GetUserByUsername(ctx, username)
+	if err != nil {
+		s.logger.Error("user not found for login", "username", username, "error", err)
+		return nil, nil, fmt.Errorf("user not found")
+	}
+
+	// Generate assertion challenge
+	challenge, err := generateAssertionChallenge(user.ID.String())
+	if err != nil {
+		s.logger.Error("failed to generate assertion challenge", "user_id", user.ID, "error", err)
+		return nil, nil, fmt.Errorf("failed to generate challenge: %w", err)
+	}
+
+	// Store the challenge
+	if err := s.challengeStore.Put(ctx, user.ID.String(), base64.StdEncoding.EncodeToString(challenge), 5*time.Minute); err != nil {
+		s.logger.Error("failed to store assertion challenge", "user_id", user.ID, "error", err)
+		return nil, nil, fmt.Errorf("failed to store challenge: %w", err)
+	}
+
+	s.logger.Info("user login by username initiated", "user_id", user.ID)
+	return user, challenge, nil
+}
+
 // Login looks up a user by their device public key and returns a challenge.
 func (s *AuthService) Login(ctx context.Context, devicePublicKey []byte) (*repository.User, []byte, error) {
 	device, err := s.repo.GetDeviceByPublicKey(ctx, devicePublicKey)
@@ -235,8 +269,11 @@ func (s *AuthService) Login(ctx context.Context, devicePublicKey []byte) (*repos
 		return nil, nil, fmt.Errorf("failed to generate challenge: %w", err)
 	}
 
-	// Store the challenge for later verification
-	storeChallengeForUser(user.ID.String(), challenge)
+	// Store the challenge for later verification (5-minute TTL)
+	if err := s.challengeStore.Put(ctx, user.ID.String(), base64.StdEncoding.EncodeToString(challenge), 5*time.Minute); err != nil {
+		s.logger.Error("failed to store assertion challenge", "user_id", user.ID, "error", err)
+		return nil, nil, fmt.Errorf("failed to store challenge: %w", err)
+	}
 
 	s.logger.Info("user login initiated", "user_id", user.ID)
 
@@ -275,9 +312,16 @@ func (s *AuthService) VerifyAssertion(ctx context.Context, userID uuid.UUID, ass
 		}
 
 		// Look up the stored challenge for this user
-		challenge, err := getChallengeForUser(userID.String())
+		challengeStr, err := s.challengeStore.Get(ctx, userID.String())
 		if err != nil {
-			return fmt.Errorf("challenge not found or expired: %w", err)
+			return fmt.Errorf("challenge retrieval failed: %w", err)
+		}
+		if challengeStr == "" {
+			return fmt.Errorf("challenge not found or expired")
+		}
+		challenge, err := base64.StdEncoding.DecodeString(challengeStr)
+		if err != nil {
+			return fmt.Errorf("invalid challenge format: %w", err)
 		}
 
 		// Create a webauthn.User for verification
@@ -315,6 +359,134 @@ func (s *AuthService) GetDevicesForUser(ctx context.Context, userID uuid.UUID) (
 	return devices, nil
 }
 
+// AddCredential creates a new device credential and returns a WebAuthn challenge.
+func (s *AuthService) AddCredential(ctx context.Context, userID uuid.UUID, deviceName string) (*repository.Device, []byte, error) {
+	// Verify user exists
+	_, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("user not found: %w", err)
+	}
+
+	// Create a placeholder device with empty public key
+	device, err := s.repo.CreateDeviceWithName(ctx, userID, nil, "pending", deviceName)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create device: %w", err)
+	}
+
+	// Generate registration challenge
+	challenge, err := generateRegistrationChallenge(userID.String())
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to generate challenge: %w", err)
+	}
+
+	if err := s.challengeStore.Put(ctx, userID.String(), base64.StdEncoding.EncodeToString(challenge), 5*time.Minute); err != nil {
+		return nil, nil, fmt.Errorf("failed to store challenge: %w", err)
+	}
+
+	s.logger.Info("credential addition initiated", "user_id", userID, "device_id", device.ID)
+	return device, challenge, nil
+}
+
+// VerifyAddCredential verifies a new credential and updates the device.
+func (s *AuthService) VerifyAddCredential(ctx context.Context, userID, deviceID uuid.UUID, credentialResponse []byte, deviceSignature []byte) error {
+	device, err := s.repo.GetDeviceByID(ctx, deviceID)
+	if err != nil {
+		return fmt.Errorf("device not found: %w", err)
+	}
+	if device.UserID != userID {
+		return fmt.Errorf("device does not belong to user")
+	}
+
+	if isDevKey(device.PublicKey) || device.PublicKey == nil {
+		// Dev mode or pending credential
+		result, err := verifyRegistrationCredentialDevBypass(device.PublicKey)
+		if err != nil {
+			return fmt.Errorf("dev credential verification failed: %w", err)
+		}
+
+		if err := s.repo.UpdateDeviceCredential(ctx, device.ID, result.CredentialID, result.CredentialPublicKey); err != nil {
+			return fmt.Errorf("failed to update credential data: %w", err)
+		}
+		if err := s.repo.TrustDevice(ctx, device.ID); err != nil {
+			return fmt.Errorf("failed to trust device: %w", err)
+		}
+	} else {
+		if s.webauthn == nil {
+			return fmt.Errorf("WebAuthn not initialized")
+		}
+
+		challengeStr, err := s.challengeStore.Get(ctx, userID.String())
+		if err != nil || challengeStr == "" {
+			return fmt.Errorf("challenge not found or expired")
+		}
+		challenge, err := base64.StdEncoding.DecodeString(challengeStr)
+		if err != nil {
+			return fmt.Errorf("invalid challenge format: %w", err)
+		}
+
+		webauthnUser := &webauthnUser{
+			id:          userID[:],
+			username:    userID.String(),
+			displayName: userID.String(),
+		}
+
+		result, err := verifyRegistrationCredential(credentialResponse, challenge, s.webauthn, webauthnUser)
+		if err != nil {
+			return fmt.Errorf("credential verification failed: %w", err)
+		}
+
+		if err := s.repo.UpdateDeviceCredential(ctx, device.ID, result.CredentialID, result.CredentialPublicKey); err != nil {
+			return fmt.Errorf("failed to update credential data: %w", err)
+		}
+		if err := s.repo.TrustDevice(ctx, device.ID); err != nil {
+			return fmt.Errorf("failed to trust device: %w", err)
+		}
+	}
+
+	_ = s.CreateAuditEntry(ctx, userID, "user.add_credential", deviceID.String(), map[string]interface{}{
+		"device_id": deviceID.String(),
+	})
+
+	s.logger.Info("credential added", "user_id", userID, "device_id", deviceID)
+	return nil
+}
+
+// ListCredentials returns all credentials for a user.
+func (s *AuthService) ListCredentials(ctx context.Context, userID uuid.UUID) ([]*repository.Device, error) {
+	return s.repo.GetDevicesByUserID(ctx, userID)
+}
+
+// RemoveCredential removes a device credential, preventing removal of the last device.
+func (s *AuthService) RemoveCredential(ctx context.Context, userID, deviceID uuid.UUID) error {
+	devices, err := s.repo.GetDevicesByUserID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("failed to get devices: %w", err)
+	}
+	if len(devices) <= 1 {
+		return fmt.Errorf("cannot remove the last device - at least one credential is required")
+	}
+
+	// Verify the device belongs to the user
+	device, err := s.repo.GetDeviceByID(ctx, deviceID)
+	if err != nil {
+		return fmt.Errorf("device not found: %w", err)
+	}
+	if device.UserID != userID {
+		return fmt.Errorf("device does not belong to user")
+	}
+
+	if err := s.repo.DeleteDevice(ctx, deviceID); err != nil {
+		return fmt.Errorf("failed to remove device: %w", err)
+	}
+
+	_ = s.CreateAuditEntry(ctx, userID, "user.remove_credential", deviceID.String(), map[string]interface{}{
+		"device_id": deviceID.String(),
+	})
+
+	s.logger.Info("credential removed", "user_id", userID, "device_id", deviceID)
+	return nil
+}
+
 // CreateAuditEntry logs an audit event to the database.
 func (s *AuthService) CreateAuditEntry(ctx context.Context, actorID uuid.UUID, action, target string, details map[string]interface{}) error {
 	return s.repo.CreateAuditLog(ctx, actorID, action, target, details)
@@ -337,34 +509,6 @@ func deviceToCredentials(devices []*repository.Device) []webauthn.Credential {
 		}
 	}
 	return credentials
-}
-
-// challengeStore provides in-memory challenge storage for WebAuthn ceremonies.
-// This is a temporary implementation; Task 2 adds Redis-backed persistence.
-type challengeEntry struct {
-	challenge []byte
-}
-
-var globalChallengeStore = struct {
-	entries map[string]*challengeEntry
-}{
-	entries: make(map[string]*challengeEntry),
-}
-
-// storeChallengeForUser stores a challenge for a user (for later verification).
-func storeChallengeForUser(userID string, challenge []byte) {
-	globalChallengeStore.entries[userID] = &challengeEntry{challenge: challenge}
-}
-
-// getChallengeForUser retrieves a stored challenge for a user.
-func getChallengeForUser(userID string) ([]byte, error) {
-	entry, ok := globalChallengeStore.entries[userID]
-	if !ok {
-		return nil, fmt.Errorf("challenge not found for user %s", userID)
-	}
-	// Delete the challenge after retrieval (one-time use)
-	delete(globalChallengeStore.entries, userID)
-	return entry.challenge, nil
 }
 
 // isDevPublicKey checks if a device public key is a dev-mode key (starts with "dev:").

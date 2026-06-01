@@ -7,12 +7,63 @@
 
 const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:8080';
 
-/**
- * Get the current session token from local storage.
- */
+/** Store session token in both cookie and localStorage (migration period). */
+export function setSessionToken(token: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('nomados-session', token);
+  document.cookie = `nomados-session=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+}
+
+/** Store refresh token in localStorage. */
+export function setRefreshToken(token: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('nomados-refresh', token);
+}
+
+/** Get refresh token from localStorage. */
+export function getRefreshToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('nomados-refresh');
+}
+
+/** Get session token, checking cookies first, then localStorage fallback. */
 export function getSessionToken(): string | null {
   if (typeof window === 'undefined') return null;
+  // Check cookies first
+  const match = document.cookie.match(/nomados-session=([^;]+)/);
+  if (match) return match[1];
+  // Fallback to localStorage for migration
   return localStorage.getItem('nomados-session');
+}
+
+/** Logout: clear all tokens, attempt session revocation, redirect to login. */
+export async function logout(): Promise<void> {
+  const { clearCachedMasterKey } = await import('./keys');
+  clearCachedMasterKey();
+
+  const token = getSessionToken();
+  if (token) {
+    try {
+      await fetch(`${GATEWAY_URL}/v1/session/revoke`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+    } catch {
+      // Best-effort — don't block logout on network failure
+    }
+  }
+
+  // Clear localStorage
+  localStorage.removeItem('nomados-session');
+  localStorage.removeItem('nomados-refresh');
+
+  // Clear cookie
+  document.cookie = 'nomados-session=; path=/; max-age=0';
+
+  // Redirect to login
+  if (typeof window !== 'undefined') {
+    window.location.href = '/login';
+  }
 }
 
 /**
@@ -60,18 +111,98 @@ export async function deriveMasterKey(passphrase: string, salt: string): Promise
   return derivedBits;
 }
 
-/**
- * Make an authenticated GET request.
- */
-export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
-  const url = path.startsWith('http') ? path : `${GATEWAY_URL}${path}`;
-  return fetch(url, {
+/** Attempt to refresh the access token using the refresh token. */
+async function attemptTokenRefresh(): Promise<string | null> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return null;
+
+  try {
+    const res = await fetch(`${GATEWAY_URL}/v1/session/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    if (data.access_token) {
+      setSessionToken(data.access_token);
+      if (data.refresh_token) {
+        setRefreshToken(data.refresh_token);
+      }
+      return data.access_token;
+    }
+  } catch {
+    // Network failure
+  }
+  return null;
+}
+
+/** Authenticated fetch with automatic 401 handling and token refresh. */
+export async function authenticatedFetch(url: string, init?: RequestInit): Promise<Response> {
+  const fullUrl = url.startsWith('http') ? url : `${GATEWAY_URL}${url}`;
+  const token = getSessionToken();
+
+  const response = await fetch(fullUrl, {
     ...init,
     headers: {
       ...authHeaders(),
       ...init?.headers,
     },
   });
+
+  if (response.status === 401 && token) {
+    const newToken = await attemptTokenRefresh();
+    if (newToken) {
+      // Retry with new token
+      const retryHeaders = new Headers(init?.headers);
+      retryHeaders.set('Authorization', `Bearer ${newToken}`);
+      return fetch(fullUrl, {
+        ...init,
+        headers: retryHeaders,
+      });
+    }
+    // Refresh failed — force logout
+    await logout();
+    // logout() redirects, so this won't really return
+    return response;
+  }
+
+  return response;
+}
+
+/**
+ * Make an authenticated GET request.
+ */
+export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+  const url = path.startsWith('http') ? path : `${GATEWAY_URL}${path}`;
+  return authenticatedFetch(url, init);
+}
+
+/**
+ * Get the current access token (alias for getSessionToken).
+ * Used by the key management module to derive encryption keys.
+ */
+export function getAccessToken(): string | null {
+  return getSessionToken();
+}
+
+/**
+ * Check whether the user has a valid, non-expired session.
+ */
+export function isAuthenticated(): boolean {
+  const token = getSessionToken();
+  if (!token) return false;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return false;
+    const payload = JSON.parse(atob(parts[1]));
+    if (typeof payload.exp !== 'number') return true;
+    return payload.exp > Date.now() / 1000;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -79,7 +210,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
  */
 export async function apiPost(path: string, body?: unknown): Promise<Response> {
   const url = path.startsWith('http') ? path : `${GATEWAY_URL}${path}`;
-  return fetch(url, {
+  return authenticatedFetch(url, {
     method: 'POST',
     headers: authHeaders(),
     body: body ? JSON.stringify(body) : undefined,

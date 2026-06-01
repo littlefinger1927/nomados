@@ -36,7 +36,7 @@ func TestIsValidTransition(t *testing.T) {
 		{StatePaused, StateStopped, false},
 		{StateStopped, StateRunning, false},
 		{StateStopped, StatePaused, false},
-		{StateStopped, StateCreating, false},
+		{StateStopped, StateCreating, true},
 		{StateStopped, StateStopped, false},
 		{StateStopping, StateRunning, false},
 		{StateStopping, StatePaused, false},
@@ -70,7 +70,7 @@ func TestWorkspaceStateConstants(t *testing.T) {
 func newTestService() (*WorkspaceService, *docker.MockClient) {
 	mockDocker := docker.NewMockClient()
 	logger := logging.NewLogger("workspace-orchestrator-test", nil)
-	svc := NewWorkspaceService(mockDocker, logger, nil)
+	svc := NewWorkspaceService(mockDocker, nil, logger, nil)
 	return svc, mockDocker
 }
 
@@ -106,7 +106,7 @@ func TestCreateWorkspaceDockerError(t *testing.T) {
 	mockDocker := docker.NewMockClient()
 	mockDocker.CreateError = fmt.Errorf("docker unavailable")
 	logger := logging.NewLogger("workspace-orchestrator-test", nil)
-	svc := NewWorkspaceService(mockDocker, logger, nil)
+	svc := NewWorkspaceService(mockDocker, nil, logger, nil)
 	ctx := context.Background()
 
 	_, err := svc.CreateWorkspace(ctx, "user-1", "test-workspace")
@@ -415,5 +415,42 @@ func TestResumeFromStoppedFails(t *testing.T) {
 	_, err := svc.ResumeWorkspace(ctx, created.ID)
 	if err == nil {
 		t.Error("expected error when resuming stopped workspace, got nil")
+	}
+}
+
+func TestStartFromStopped(t *testing.T) {
+	svc, _ := newTestService()
+	ctx := context.Background()
+
+	ws, err := svc.CreateWorkspace(ctx, "user-1", "test-ws")
+	if err != nil {
+		t.Fatalf("CreateWorkspace: %v", err)
+	}
+	// Stop the workspace first
+	_, err = svc.StopWorkspace(ctx, ws.ID)
+	if err != nil {
+		t.Fatalf("StopWorkspace: %v", err)
+	}
+	// Start it again
+	result, err := svc.StartWorkspace(ctx, ws.ID)
+	if err != nil {
+		t.Fatalf("StartWorkspace: %v", err)
+	}
+	if result.State != StateRunning {
+		t.Errorf("expected Running, got %s", result.State)
+	}
+}
+
+func TestStartFromRunningFails(t *testing.T) {
+	svc, _ := newTestService()
+	ctx := context.Background()
+
+	ws, err := svc.CreateWorkspace(ctx, "user-1", "test-ws")
+	if err != nil {
+		t.Fatalf("CreateWorkspace: %v", err)
+	}
+	_, err = svc.StartWorkspace(ctx, ws.ID)
+	if err == nil {
+		t.Error("expected error when starting a running workspace")
 	}
 }

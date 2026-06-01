@@ -13,7 +13,9 @@ import (
 	authsdk "github.com/nomados/nomados/packages/auth-sdk"
 
 	authv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/auth/v1"
+	browserv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/browser_manager/v1"
 	sessionv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/session/v1"
+	streamingv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/streaming/v1"
 	workspacev1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/workspace/v1"
 	filev1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/file/v1"
 	vaultv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/vault/v1"
@@ -62,6 +64,18 @@ func main() {
 	}
 	defer vaultConn.Close()
 
+	browserConn, err := grpc.NewClient(cfg.BrowserAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("failed to connect to browser-manager service: %v", err)
+	}
+	defer browserConn.Close()
+
+	streamingConn, err := grpc.NewClient(cfg.StreamingAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("failed to connect to streaming service: %v", err)
+	}
+	defer streamingConn.Close()
+
 	// Build grpc-gateway mux.
 	mux := runtime.NewServeMux()
 
@@ -81,12 +95,20 @@ func main() {
 	if err := vaultv1.RegisterVaultServiceHandler(ctx, mux, vaultConn); err != nil {
 		log.Fatalf("failed to register vault handler: %v", err)
 	}
+	if err := browserv1.RegisterBrowserManagerServiceHandler(ctx, mux, browserConn); err != nil {
+		log.Fatalf("failed to register browser-manager handler: %v", err)
+	}
+	if err := streamingv1.RegisterStreamingServiceHandler(ctx, mux, streamingConn); err != nil {
+		log.Fatalf("failed to register streaming handler: %v", err)
+	}
 
 	// Set up health checker for downstream services.
 	healthChecker := gwhealth.NewChecker([]gwhealth.BackendConfig{
 		{Name: "auth", Addr: cfg.AuthAddr},
 		{Name: "session", Addr: cfg.SessionAddr},
 		{Name: "workspace", Addr: cfg.WorkspaceAddr},
+		{Name: "browser", Addr: cfg.BrowserAddr},
+		{Name: "streaming", Addr: cfg.StreamingAddr},
 		{Name: "file", Addr: cfg.FileAddr},
 		{Name: "vault", Addr: cfg.VaultAddr},
 	})
@@ -95,8 +117,13 @@ func main() {
 	validator := authsdk.NewTokenValidator(cfg.SigningSecret)
 	rateLimiter := middleware.NewIPRateLimiter(cfg.RateLimitRPS, cfg.RateLimitBurst)
 
-	// Wire middleware chain: rate limit -> auth -> grpc-gateway mux.
-	handler := middleware.RateLimitMiddleware(rateLimiter, middleware.AuthMiddleware(validator, mux))
+	// Wire middleware chain: rate limit -> CORS -> auth -> grpc-gateway mux.
+	corsConfig := middleware.CORSConfig{
+		AllowedOrigins:   cfg.CORSAllowedOrigins,
+		AllowedMethods:  []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:  []string{"Content-Type", "Authorization", "X-Requested-With"},
+	}
+	handler := middleware.RateLimitMiddleware(rateLimiter, middleware.CORSMiddleware(corsConfig, middleware.AuthMiddleware(validator, mux)))
 
 	// Add /health endpoint.
 	httpHandler := http.NewServeMux()

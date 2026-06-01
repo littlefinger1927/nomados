@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/nomados/nomados/packages/logging"
 )
@@ -18,6 +19,7 @@ type BrowserInstance struct {
 	WorkspaceID string
 	Fingerprint Fingerprint
 	ProfilePath string
+	StartedAt   time.Time
 }
 
 // CommandRunner abstracts exec.Command for testability.
@@ -158,6 +160,7 @@ func (l *ChromiumLauncher) Launch(ctx context.Context, workspaceID string) (*Bro
 		WorkspaceID: workspaceID,
 		Fingerprint: fp,
 		ProfilePath: profilePath,
+		StartedAt:   time.Now(),
 	}
 
 	l.instances.Store(workspaceID, instance)
@@ -212,6 +215,24 @@ func (l *ChromiumLauncher) GetInstance(workspaceID string) (*BrowserInstance, bo
 		return nil, false
 	}
 	return instance, true
+}
+
+// ListInstances returns all running browser instances.
+func (l *ChromiumLauncher) ListInstances() []*BrowserInstance {
+	var result []*BrowserInstance
+	l.instances.Range(func(_, val interface{}) bool {
+		instance, ok := val.(*BrowserInstance)
+		if ok {
+			result = append(result, instance)
+		}
+		return true
+	})
+	return result
+}
+
+// StoreInstanceForTest adds a BrowserInstance to the instances map for testing.
+func (l *ChromiumLauncher) StoreInstanceForTest(workspaceID string, instance *BrowserInstance) {
+	l.instances.Store(workspaceID, instance)
 }
 
 // StopAll terminates all running Chromium instances. Used for graceful shutdown.

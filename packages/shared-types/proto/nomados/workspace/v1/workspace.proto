@@ -26,6 +26,9 @@ service WorkspaceService {
   rpc Stop(StopWorkspaceRequest) returns (Workspace) {
     option (google.api.http) = {post: "/v1/workspace/stop" body: "*"};
   }
+  rpc Start(StartWorkspaceRequest) returns (Workspace) {
+    option (google.api.http) = {post: "/v1/workspace/start" body: "*"};
+  }
   rpc Destroy(DestroyWorkspaceRequest) returns (nomados.common.v1.Empty) {
     option (google.api.http) = {post: "/v1/workspace/destroy" body: "*"};
   }
@@ -47,6 +50,7 @@ message Workspace {
   WorkspaceState state = 4;
   int64 created_at = 5;
   int64 updated_at = 6;
+  int32 novnc_port = 7;
 }
 
 message CreateWorkspaceRequest {
@@ -79,6 +83,10 @@ message ResumeWorkspaceRequest {
 }
 
 message StopWorkspaceRequest {
+  nomados.common.v1.UUID id = 1;
+}
+
+message StartWorkspaceRequest {
   nomados.common.v1.UUID id = 1;
 }
 

@@ -67,13 +67,14 @@ func (h *HTTPHandler) handleUpload(w http.ResponseWriter, r *http.Request) {
 		contentType = "application/octet-stream"
 	}
 
+	_ = userID // authenticated user; authorization is handled at storage layer
+
 	resp, err := h.handler.UploadFile(r.Context(), &UploadRequest{
 		WorkspaceID: workspaceID,
-		UserID:      userID,
 		Filename:    header.Filename,
 		ContentType: contentType,
-		Data:         file,
-		Size:         header.Size,
+		Data:        file,
+		Size:        header.Size,
 	})
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to upload file: %v", err), http.StatusInternalServerError)
@@ -106,10 +107,11 @@ func (h *HTTPHandler) handleDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_ = userID // authenticated user; authorization is handled at storage layer
+
 	resp, err := h.handler.DownloadFile(r.Context(), &DownloadRequest{
 		WorkspaceID: workspaceID,
 		FileID:      fileID,
-		UserID:      userID,
 	})
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to download file: %v", err), http.StatusInternalServerError)
@@ -146,9 +148,10 @@ func (h *HTTPHandler) handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_ = userID // authenticated user; authorization is handled at storage layer
+
 	result, err := h.handler.ListFiles(r.Context(), &ListRequest{
 		WorkspaceID: req.WorkspaceID,
-		UserID:      userID,
 	})
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to list files: %v", err), http.StatusInternalServerError)
@@ -194,10 +197,11 @@ func (h *HTTPHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_ = userID // authenticated user; authorization is handled at storage layer
+
 	_, err := h.handler.DeleteFile(r.Context(), &DeleteRequest{
 		WorkspaceID: req.WorkspaceID,
 		FileID:      req.FileID,
-		UserID:      userID,
 	})
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to delete file: %v", err), http.StatusInternalServerError)

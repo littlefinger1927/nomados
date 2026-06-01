@@ -76,6 +76,33 @@ func TestFileMetadataStruct(t *testing.T) {
 	}
 }
 
+// createTestWorkspace inserts a user and workspace row so file FK constraints are satisfied.
+func createTestWorkspace(t *testing.T, pool *pgxpool.Pool) uuid.UUID {
+	t.Helper()
+	userID := uuid.New()
+	_, err := pool.Exec(context.Background(),
+		`INSERT INTO users (id, username, status) VALUES ($1, $2, 'active')`,
+		userID, "test-user-"+userID.String()[:8],
+	)
+	if err != nil {
+		t.Fatalf("failed to create test user: %v", err)
+	}
+
+	wsID := uuid.New()
+	_, err = pool.Exec(context.Background(),
+		`INSERT INTO workspaces (id, user_id, name, state) VALUES ($1, $2, $3, 'running')`,
+		wsID, userID, "test-ws-"+wsID.String()[:8],
+	)
+	if err != nil {
+		t.Fatalf("failed to create test workspace: %v", err)
+	}
+	t.Cleanup(func() {
+		pool.Exec(context.Background(), `DELETE FROM workspaces WHERE id = $1`, wsID)
+		pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, userID)
+	})
+	return wsID
+}
+
 func TestCreateFile(t *testing.T) {
 	pool := getTestPool(t)
 	if pool == nil {
@@ -85,7 +112,7 @@ func TestCreateFile(t *testing.T) {
 	repo := NewPostgresRepository(pool)
 	ctx := context.Background()
 
-	wsID := uuid.New()
+	wsID := createTestWorkspace(t, pool)
 	now := time.Now()
 	f := &FileMetadata{
 		ID:            uuid.New(),
@@ -125,7 +152,7 @@ func TestGetFilesByWorkspace(t *testing.T) {
 	repo := NewPostgresRepository(pool)
 	ctx := context.Background()
 
-	wsID := uuid.New()
+	wsID := createTestWorkspace(t, pool)
 	now := time.Now()
 
 	for i := 0; i < 3; i++ {
@@ -163,7 +190,7 @@ func TestDeleteFile(t *testing.T) {
 	repo := NewPostgresRepository(pool)
 	ctx := context.Background()
 
-	wsID := uuid.New()
+	wsID := createTestWorkspace(t, pool)
 	now := time.Now()
 	f := &FileMetadata{
 		ID:            uuid.New(),

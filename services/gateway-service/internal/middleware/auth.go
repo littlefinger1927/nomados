@@ -17,10 +17,15 @@ const (
 )
 
 // PublicPaths are routes that don't require authentication.
+// grpc-gateway produces camelCase paths (registerVerify, loginVerify)
+// while proto field names use snake_case (register_verify, login_verify).
+// Both formats are included to match regardless of path style.
 var PublicPaths = map[string]bool{
 	"/v1/auth/register":        true,
+	"/v1/auth/registerVerify":  true,
 	"/v1/auth/register_verify": true,
 	"/v1/auth/login":           true,
+	"/v1/auth/loginVerify":     true,
 	"/v1/auth/login_verify":    true,
 }
 

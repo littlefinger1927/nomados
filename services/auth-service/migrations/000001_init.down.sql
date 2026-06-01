@@ -1,11 +1,6 @@
-DROP INDEX IF EXISTS idx_audit_logs_timestamp;
-DROP INDEX IF EXISTS idx_audit_logs_actor_id;
-DROP INDEX IF EXISTS idx_sessions_expires_at;
-DROP INDEX IF EXISTS idx_sessions_device_id;
-DROP INDEX IF EXISTS idx_sessions_user_id;
 DROP TABLE IF EXISTS audit_logs;
 DROP TABLE IF EXISTS recovery_keys;
 DROP TABLE IF EXISTS mfa_tokens;
 DROP TABLE IF EXISTS sessions;
 DROP TABLE IF EXISTS devices;
-DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS users CASCADE;

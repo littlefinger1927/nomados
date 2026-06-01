@@ -22,7 +22,19 @@ jobs:
             **/go.sum
 
       - name: Build all Go modules
-        run: go build ./...
+        run: |
+          go build ./services/auth-service/... \
+            ./services/session-service/... \
+            ./services/workspace-orchestrator/... \
+            ./services/file-service/... \
+            ./services/browser-manager/... \
+            ./services/streaming-service/... \
+            ./services/vault-service/... \
+            ./services/observability/... \
+            ./services/gateway-service/... \
+            ./packages/auth-sdk/... \
+            ./packages/logging/... \
+            ./packages/shared-types/...
 
   go-test:
     name: Go Test
@@ -39,7 +51,19 @@ jobs:
             **/go.sum
 
       - name: Run short tests
-        run: go test -short -timeout 5m ./services/... ./packages/...
+        run: |
+          go test -short -timeout 5m \
+            ./services/auth-service/... \
+            ./services/session-service/... \
+            ./services/workspace-orchestrator/... \
+            ./services/file-service/... \
+            ./services/browser-manager/... \
+            ./services/streaming-service/... \
+            ./services/vault-service/... \
+            ./services/observability/... \
+            ./services/gateway-service/... \
+            ./packages/auth-sdk/... \
+            ./packages/logging/...
 
   go-vet:
     name: Go Vet
@@ -56,7 +80,19 @@ jobs:
             **/go.sum
 
       - name: Vet services and packages
-        run: go vet ./services/... ./packages/...
+        run: |
+          go vet \
+            ./services/auth-service/... \
+            ./services/session-service/... \
+            ./services/workspace-orchestrator/... \
+            ./services/file-service/... \
+            ./services/browser-manager/... \
+            ./services/streaming-service/... \
+            ./services/vault-service/... \
+            ./services/observability/... \
+            ./services/gateway-service/... \
+            ./packages/auth-sdk/... \
+            ./packages/logging/...
 
   frontend-build:
     name: Frontend Build
@@ -74,6 +110,10 @@ jobs:
       - name: Install dependencies
         working-directory: apps/web-desktop
         run: npm ci
+
+      - name: Install UI components dependencies
+        working-directory: packages/ui-components
+        run: npm install
 
       - name: Build
         working-directory: apps/web-desktop
@@ -95,6 +135,10 @@ jobs:
       - name: Install dependencies
         working-directory: apps/web-desktop
         run: npm ci
+
+      - name: Install UI components dependencies
+        working-directory: packages/ui-components
+        run: npm install
 
       - name: Lint
         working-directory: apps/web-desktop

@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workspace-orchestrator
+  namespace: nomados
+  labels:
+    app.kubernetes.io/name: workspace-orchestrator
+    app.kubernetes.io/part-of: nomados-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: workspace-orchestrator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: workspace-orchestrator
+    spec:
+      containers:
+        - name: workspace-orchestrator
+          image: nomados/workspace-orchestrator:latest
+          ports:
+            - containerPort: 50053
+              protocol: TCP
+          env:
+            - name: WORKSPACE_SERVICE_ADDR
+              valueFrom:
+                configMapKeyRef:
+                  name: nomados-config
+                  key: WORKSPACE_SERVICE_ADDR
+            - name: DATABASE_URL
+              value: "postgres://nomados:$(DATABASE_PASSWORD)@postgres:5432/nomados?sslmode=disable"
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nomados-secrets
+                  key: DATABASE_PASSWORD
+            - name: DOCKER_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: nomados-config
+                  key: DOCKER_ENABLED
+            - name: WORKSPACE_IMAGE
+              valueFrom:
+                configMapKeyRef:
+                  name: nomados-config
+                  key: WORKSPACE_IMAGE
+          envFrom:
+            - configMapRef:
+                name: nomados-config
+          volumeMounts:
+            - name: docker-socket
+              mountPath: /var/run/docker.sock
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "125m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 50053
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 50053
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: docker-socket
+          hostPath:
+            path: /var/run/docker.sock
+            type: Socket
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: workspace-orchestrator
+  namespace: nomados
+  labels:
+    app.kubernetes.io/name: workspace-orchestrator
+    app.kubernetes.io/part-of: nomados-platform
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: workspace-orchestrator
+  ports:
+    - port: 50053
+      targetPort: 50053
+      protocol: TCP
+      name: grpc

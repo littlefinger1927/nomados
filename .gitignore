@@ -40,6 +40,7 @@ Desktop.ini
 !.env.example
 
 # Infrastructure
+infrastructure/docker/.env
 terraform/*.tfstate
 terraform/*.tfstate.backup
 terraform/.terraform/
@@ -60,3 +61,4 @@ __debug_bin*
 
 # Local tooling
 .superpowers/.claude/worktrees/
+.gstack/

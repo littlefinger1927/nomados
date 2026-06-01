@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nomados-config
+  namespace: nomados
+  labels:
+    app.kubernetes.io/name: nomados
+    app.kubernetes.io/part-of: nomados-platform
+data:
+  # Database
+  POSTGRES_HOST: "postgres"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "nomados"
+  POSTGRES_USER: "nomados"
+  DATABASE_SSL_MODE: "disable"
+
+  # Redis
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+
+  # NATS
+  NATS_URL: "nats://nats:4222"
+
+  # MinIO
+  MINIO_ENDPOINT: "minio:9000"
+  MINIO_ACCESS_KEY: "nomados"
+  MINIO_BUCKET: "nomados-files"
+  MINIO_USE_SSL: "false"
+
+  # Service addresses
+  AUTH_SERVICE_ADDR: ":50051"
+  SESSION_SERVICE_ADDR: ":50052"
+  WORKSPACE_SERVICE_ADDR: ":50053"
+  BROWSER_MANAGER_ADDR: ":50054"
+  STREAMING_SERVICE_ADDR: ":50055"
+  FILE_SERVICE_ADDR: ":50056"
+  VAULT_SERVICE_ADDR: ":50057"
+  OBSERVABILITY_ADDR: ":9090"
+  GATEWAY_ADDR: ":8080"
+
+  # Internal service hosts (for inter-service communication)
+  AUTH_SERVICE_HOST: "auth-service"
+  SESSION_SERVICE_HOST: "session-service"
+  WORKSPACE_SERVICE_HOST: "workspace-orchestrator"
+  BROWSER_SERVICE_HOST: "browser-manager"
+  STREAMING_SERVICE_HOST: "streaming-service"
+  FILE_SERVICE_HOST: "file-service"
+  VAULT_SERVICE_HOST: "vault-service"
+
+  # Gateway routing
+  RATE_LIMIT_RPS: "100"
+  RATE_LIMIT_BURST: "200"
+  CORS_ALLOWED_ORIGINS: "http://web-desktop:3000,http://localhost:3000,https://localhost:3000"
+
+  # Workspace orchestrator
+  DOCKER_ENABLED: "true"
+  WORKSPACE_IMAGE: "chromium/chromium:latest"
+
+  # Browser manager
+  CHROMIUM_BIN_PATH: "/usr/bin/chromium-browser"
+  BROWSER_PROFILE_BASE_PATH: "/home/appuser/browser-profiles"
+
+  # TURN server
+  TURN_SERVER_URL: "turn:coturn:3478"
+  TURN_USERNAME: "nomados"
+  TURN_REALM: "nomados.dev"
+
+  # Web desktop
+  NEXT_PUBLIC_GATEWAY_URL: "https://localhost"

@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-desktop
+  namespace: nomados
+  labels:
+    app.kubernetes.io/name: web-desktop
+    app.kubernetes.io/part-of: nomados-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: web-desktop
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: web-desktop
+    spec:
+      containers:
+        - name: web-desktop
+          image: nomados/web-desktop:latest
+          ports:
+            - containerPort: 3000
+              protocol: TCP
+          env:
+            - name: NEXT_PUBLIC_GATEWAY_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: nomados-config
+                  key: NEXT_PUBLIC_GATEWAY_URL
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "125m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-desktop
+  namespace: nomados
+  labels:
+    app.kubernetes.io/name: web-desktop
+    app.kubernetes.io/part-of: nomados-platform
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: web-desktop
+  ports:
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP
+      name: http

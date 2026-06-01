@@ -12,10 +12,13 @@ import (
 	"github.com/nomados/nomados/packages/logging"
 	vaultv1 "github.com/nomados/nomados/packages/shared-types/gen/nomados/vault/v1"
 	"github.com/nomados/nomados/services/vault-service/internal/handler"
+	"github.com/nomados/nomados/services/vault-service/internal/health"
 	"github.com/nomados/nomados/services/vault-service/internal/keyderivation"
 	vaultnats "github.com/nomados/nomados/services/vault-service/internal/nats"
 	"github.com/nomados/nomados/services/vault-service/internal/service"
 	"google.golang.org/grpc"
+	grpchealth "google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 func main() {
@@ -44,6 +47,7 @@ func main() {
 	kd := keyderivation.NewKeyDeriver()
 
 	// Connect to NATS for publishing key rotation events.
+	var publisher *vaultnats.Publisher
 	publisher, err := vaultnats.NewPublisher(natsURL)
 	if err != nil {
 		log.Printf("warning: failed to connect to NATS at %s: %v (rotation events will not be published)", natsURL, err)
@@ -58,7 +62,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to initialize session validator: %v", err)
 	}
-	defer sessionValidator.Close()
 
 	// Initialize handler and gRPC adapter.
 	vaultHandler := handler.NewVaultServiceHandler(kd, publisher, logger)
@@ -67,6 +70,14 @@ func main() {
 	// Set up gRPC server.
 	grpcServer := grpc.NewServer()
 	vaultv1.RegisterVaultServiceServer(grpcServer, grpcAdapter)
+
+	// Register gRPC health server.
+	hs := grpchealth.NewServer()
+	grpc_health_v1.RegisterHealthServer(grpcServer, hs)
+	hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
+
+	// Create health checker for dependency verification.
+	checker := health.NewChecker(publisher)
 
 	lis, err := net.Listen("tcp", listenAddr)
 	if err != nil {
@@ -80,6 +91,13 @@ func main() {
 		}
 	}()
 
+	// All dependencies connected — mark as SERVING.
+	if checker.Check(context.Background()) == grpc_health_v1.HealthCheckResponse_SERVING {
+		hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
+	} else {
+		log.Println("warning: health check failed at startup, reporting NOT_SERVING")
+	}
+
 	logger.Info("vault-service starting", "addr", listenAddr)
 	log.Printf("vault-service listening on %s", listenAddr)
 
@@ -89,8 +107,11 @@ func main() {
 	sig := <-quit
 	log.Printf("received %s, shutting down...", sig)
 
-	// Shutdown with timeout.
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// Mark as NOT_SERVING before stopping.
+	hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
+
+	// Shutdown with timeout (15s for slow operations).
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer shutdownCancel()
 
 	// Stop accepting new requests with timeout enforcement.
@@ -108,11 +129,13 @@ func main() {
 		grpcServer.Stop()
 	}
 
-	// Close resources explicitly (nil-safe publisher close).
+	// Close resources explicitly.
 	if publisher != nil {
 		log.Println("closing NATS publisher...")
 		publisher.Close()
 	}
+	log.Println("closing session validator...")
+	sessionValidator.Close()
 
 	log.Println("shutdown complete")
 }

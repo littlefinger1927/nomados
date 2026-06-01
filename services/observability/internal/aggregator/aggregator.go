@@ -23,8 +23,12 @@ type Aggregator struct {
 
 // NewAggregator creates a new Aggregator with Prometheus metrics registered
 // in an isolated registry (does not pollute the default registry).
+// Standard Go runtime metrics (goroutines, memory, CPU, etc.) are also
+// registered so the /metrics endpoint exposes both custom and runtime data.
 func NewAggregator() *Aggregator {
 	reg := prometheus.NewRegistry()
+	reg.MustRegister(prometheus.NewGoCollector())
+	reg.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
 
 	activeSessions := prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "nomados_active_sessions",

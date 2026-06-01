@@ -1,0 +1,19 @@
+# NomadOS Local Development Caddyfile
+# TLS termination with self-signed certs for localhost
+# Reverse proxy to gateway-service on the Docker network
+
+localhost {
+	reverse_proxy gateway-service:8080
+
+	# Pass through request headers
+	request_header X-Request-ID "{http.request.header.X-Request-ID}"
+
+	# Add forwarded headers so the gateway knows the original scheme
+	request_header X-Forwarded-For "{http.request.remote.host}"
+	request_header X-Forwarded-Proto "https"
+}
+
+# Redirect HTTP to HTTPS
+:http {
+	redir https://localhost{uri} permanent
+}

@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nats
+  namespace: nomados
+  labels:
+    app.kubernetes.io/name: nats
+    app.kubernetes.io/part-of: nomados-platform
+    app.kubernetes.io/component: messaging
+spec:
+  serviceName: nats
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nats
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nats
+    spec:
+      containers:
+        - name: nats
+          image: nats:2-alpine
+          args:
+            - --js
+            - --store_dir
+            - /data
+            - -m
+            - "8222"
+          ports:
+            - containerPort: 4222
+              protocol: TCP
+              name: client
+            - containerPort: 8222
+              protocol: TCP
+              name: monitoring
+          volumeMounts:
+            - name: nats-data
+              mountPath: /data
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "125m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8222
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8222
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+  volumeClaimTemplates:
+    - metadata:
+        name: nats-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats
+  namespace: nomados
+  labels:
+    app.kubernetes.io/name: nats
+    app.kubernetes.io/part-of: nomados-platform
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: nats
+  ports:
+    - port: 4222
+      targetPort: 4222
+      protocol: TCP
+      name: client
+    - port: 8222
+      targetPort: 8222
+      protocol: TCP
+      name: monitoring

@@ -64,3 +64,18 @@ func (l *Logger) Debug(msg string, keysAndValues ...interface{}) {
 func (l *Logger) Warn(msg string, keysAndValues ...interface{}) {
 	l.internal.Warn(msg, keysAndValues...)
 }
+
+// WithRequestID returns a new Logger with the request_id field set.
+func (l *Logger) WithRequestID(id string) *Logger {
+	return l.With("request_id", id)
+}
+
+// WithMethod returns a new Logger with the method field set.
+func (l *Logger) WithMethod(method string) *Logger {
+	return l.With("method", method)
+}
+
+// WithPath returns a new Logger with the path field set.
+func (l *Logger) WithPath(path string) *Logger {
+	return l.With("path", path)
+}

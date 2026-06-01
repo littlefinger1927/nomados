@@ -7,14 +7,15 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/nomados/nomados/packages/logging"
-	"github.com/nomados/nomados/services/browser-manager/internal/chromium"
 	bmnats "github.com/nomados/nomados/services/browser-manager/internal/nats"
 	"google.golang.org/grpc"
 	grpchealth "google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
+	"github.com/nomados/nomados/services/browser-manager/internal/chromium"
 	bmhealth "github.com/nomados/nomados/services/browser-manager/internal/health"
 )
 
@@ -47,11 +48,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect to NATS: %v", err)
 	}
-	defer sub.Close()
-
-	// Set up graceful shutdown
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
 	// Start gRPC server (health check / management endpoint for Phase 1)
 	grpcServer := grpc.NewServer()
@@ -69,22 +65,11 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
+	// Start gRPC server in a goroutine.
 	go func() {
-		sig := <-sigCh
-		logger.Info("received shutdown signal", "signal", sig)
-
-		// Mark as NOT_SERVING before stopping.
-		hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
-
-		// Stop all running browser instances
-		ctx := context.Background()
-		if err := launcher.StopAll(ctx); err != nil {
-			logger.Error("error stopping browser instances during shutdown", "error", err)
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatalf("failed to serve: %v", err)
 		}
-
-		// Close NATS subscription
-		sub.Close()
-		os.Exit(0)
 	}()
 
 	// Subscribe to workspace events
@@ -101,7 +86,41 @@ func main() {
 	}
 
 	logger.Info("browser-manager listening", "address", listenAddr)
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+
+	// Wait for shutdown signal.
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-quit
+	log.Printf("received %s, shutting down...", sig)
+
+	// Mark as NOT_SERVING before stopping.
+	hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
+
+	// Stop all running browser instances
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer shutdownCancel()
+	if err := launcher.StopAll(shutdownCtx); err != nil {
+		logger.Error("error stopping browser instances during shutdown", "error", err)
 	}
+
+	// Stop accepting new requests with timeout enforcement.
+	done := make(chan struct{})
+	go func() {
+		grpcServer.GracefulStop()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		log.Println("graceful stop completed")
+	case <-shutdownCtx.Done():
+		log.Println("shutdown timeout exceeded, forcing stop")
+		grpcServer.Stop()
+	}
+
+	// Close resources explicitly.
+	log.Println("closing NATS subscription...")
+	sub.Close()
+
+	log.Println("shutdown complete")
 }

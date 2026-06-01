@@ -7,18 +7,19 @@ import (
 )
 
 type Config struct {
-	ListenAddr          string
-	AuthAddr            string
-	SessionAddr         string
-	WorkspaceAddr       string
-	BrowserAddr         string
+	ListenAddr         string
+	AuthAddr           string
+	SessionAddr        string
+	WorkspaceAddr      string
+	BrowserAddr        string
 	StreamingAddr       string
-	FileAddr            string
-	VaultAddr           string
-	SigningSecret       string
-	RateLimitRPS        float64
-	RateLimitBurst      int
-	CORSAllowedOrigins  []string
+	FileAddr           string
+	VaultAddr          string
+	SigningSecret      string
+	RateLimitRPS       float64
+	RateLimitBurst     int
+	CORSAllowedOrigins []string
+	TLSBackendCertPath string
 }
 
 func Load() *Config {
@@ -34,7 +35,8 @@ func Load() *Config {
 		SigningSecret:       getEnv("SIGNING_SECRET", "nomados-dev-secret"),
 		RateLimitRPS:        getEnvFloat("RATE_LIMIT_RPS", 100),
 		RateLimitBurst:      getEnvInt("RATE_LIMIT_BURST", 200),
-		CORSAllowedOrigins:  parseCSVEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000"),
+		CORSAllowedOrigins:  parseCSVEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,https://localhost:3000"),
+		TLSBackendCertPath:  getEnv("TLS_BACKEND_CERT", ""),
 	}
 }
 

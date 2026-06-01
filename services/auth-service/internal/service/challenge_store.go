@@ -16,6 +16,8 @@ type ChallengeStore interface {
 	// Get retrieves and deletes a challenge value (one-time use).
 	// Returns ("", nil) if the key does not exist or has expired.
 	Get(ctx context.Context, key string) (string, error)
+	// Close releases any resources held by the store.
+	Close()
 }
 
 // MemoryChallengeStore is an in-memory ChallengeStore backed by a map with sync.RWMutex.
@@ -124,4 +126,11 @@ func (s *RedisChallengeStore) Get(ctx context.Context, key string) (string, erro
 	// Delete on read (one-time use) — best-effort; ignore error since TTL will clean up
 	_ = s.client.Del(ctx, redisKey).Err()
 	return val, nil
+}
+
+// Close closes the underlying Redis connection.
+func (s *RedisChallengeStore) Close() {
+	if s.client != nil {
+		s.client.Close()
+	}
 }

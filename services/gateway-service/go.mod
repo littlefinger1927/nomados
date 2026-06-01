@@ -3,6 +3,7 @@ module github.com/nomados/nomados/services/gateway-service
 go 1.25.0
 
 require (
+	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0
 	github.com/nomados/nomados/packages/auth-sdk v0.0.0
 	github.com/nomados/nomados/packages/shared-types v0.0.0

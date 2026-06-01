@@ -1,48 +1,103 @@
 package middleware
 
 import (
+	"hash/fnv"
 	"net"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"golang.org/x/time/rate"
 )
 
+const (
+	numShards        = 16
+	evictionInterval = 60 * time.Second
+	maxEntryAge      = 10 * time.Minute
+)
+
+type shard struct {
+	mu       sync.RWMutex
+	limiters map[string]*ipLimiter
+}
+
 type ipLimiter struct {
 	limiter  *rate.Limiter
-	lastSeen int64
+	lastSeen time.Time
 }
 
 type IPRateLimiter struct {
-	limiters map[string]*ipLimiter
-	mu       sync.Mutex
-	rps      float64
-	burst    int
+	shards [numShards]shard
+	rps    float64
+	burst  int
+	once   sync.Once
 }
 
 func NewIPRateLimiter(rps float64, burst int) *IPRateLimiter {
-	return &IPRateLimiter{
-		limiters: make(map[string]*ipLimiter),
-		rps:      rps,
-		burst:    burst,
+	l := &IPRateLimiter{
+		rps:   rps,
+		burst: burst,
 	}
+	for i := range l.shards {
+		l.shards[i].limiters = make(map[string]*ipLimiter)
+	}
+	return l
+}
+
+// getShardIndex returns the shard index for a given IP key.
+func getShardIndex(key string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(key))
+	return h.Sum32() % numShards
 }
 
 func (l *IPRateLimiter) GetLimiter(ip string) *rate.Limiter {
-	l.mu.Lock()
-	defer l.mu.Unlock()
+	idx := getShardIndex(ip)
+	s := &l.shards[idx]
 
-	if limiter, exists := l.limiters[ip]; exists {
-		return limiter.limiter
+	s.mu.Lock()
+	entry, exists := s.limiters[ip]
+	if exists {
+		entry.lastSeen = time.Now()
+		s.mu.Unlock()
+		return entry.limiter
 	}
 
 	limiter := rate.NewLimiter(rate.Limit(l.rps), l.burst)
-	l.limiters[ip] = &ipLimiter{limiter: limiter}
+	s.limiters[ip] = &ipLimiter{limiter: limiter, lastSeen: time.Now()}
+	s.mu.Unlock()
 	return limiter
 }
 
+// EvictStaleEntries removes entries that have not been seen for longer than
+// maxEntryAge. It iterates all shards and is safe to call concurrently.
+func (l *IPRateLimiter) EvictStaleEntries() {
+	cutoff := time.Now().Add(-maxEntryAge)
+	for i := range l.shards {
+		s := &l.shards[i]
+		s.mu.Lock()
+		for ip, entry := range s.limiters {
+			if entry.lastSeen.Before(cutoff) {
+				delete(s.limiters, ip)
+			}
+		}
+		s.mu.Unlock()
+	}
+}
+
+func (l *IPRateLimiter) startEviction() {
+	go func() {
+		ticker := time.NewTicker(evictionInterval)
+		defer ticker.Stop()
+		for range ticker.C {
+			l.EvictStaleEntries()
+		}
+	}()
+}
+
 func RateLimitMiddleware(limiter *IPRateLimiter, next http.Handler) http.Handler {
+	limiter.once.Do(limiter.startEviction)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip := extractIP(r)
 		ipLimiter := limiter.GetLimiter(ip)

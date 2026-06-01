@@ -5,35 +5,42 @@
  * authenticated API request helpers.
  */
 
-const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:8080';
+const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || (typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'https://localhost' : 'http://localhost:8080');
 
-/** Store session token in both cookie and localStorage (migration period). */
+/** Store session token in both HttpOnly cookie and localStorage (migration period). */
 export function setSessionToken(token: string): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem('nomados-session', token);
-  document.cookie = `nomados-session=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+  // HttpOnly cookies cannot be set from JS — use SameSite=Strict + Secure as fallback.
+  // The server should set the HttpOnly cookie via Set-Cookie header on login responses.
+  document.cookie = `nomados-session=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Strict; Secure`;
 }
 
-/** Store refresh token in localStorage. */
+/** Store refresh token in both cookie and localStorage. */
 export function setRefreshToken(token: string): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem('nomados-refresh', token);
+  document.cookie = `nomados-refresh=${token}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Strict; Secure`;
 }
 
-/** Get refresh token from localStorage. */
+/** Get refresh token from localStorage (primary) or cookie (fallback). */
 export function getRefreshToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('nomados-refresh');
+  const stored = localStorage.getItem('nomados-refresh');
+  if (stored) return stored;
+  const match = document.cookie.match(/nomados-refresh=([^;]+)/);
+  return match ? match[1] : null;
 }
 
-/** Get session token, checking cookies first, then localStorage fallback. */
+/** Get session token, checking localStorage first (since HttpOnly cookies are invisible to JS), then cookie fallback. */
 export function getSessionToken(): string | null {
   if (typeof window === 'undefined') return null;
-  // Check cookies first
+  // localStorage is primary — the server sets HttpOnly cookies as a backup
+  const stored = localStorage.getItem('nomados-session');
+  if (stored) return stored;
+  // Fallback to non-HttpOnly cookie for migration
   const match = document.cookie.match(/nomados-session=([^;]+)/);
-  if (match) return match[1];
-  // Fallback to localStorage for migration
-  return localStorage.getItem('nomados-session');
+  return match ? match[1] : null;
 }
 
 /** Logout: clear all tokens, attempt session revocation, redirect to login. */
@@ -57,8 +64,9 @@ export async function logout(): Promise<void> {
   localStorage.removeItem('nomados-session');
   localStorage.removeItem('nomados-refresh');
 
-  // Clear cookie
-  document.cookie = 'nomados-session=; path=/; max-age=0';
+  // Clear cookies with Secure flag matching how they were set
+  document.cookie = 'nomados-session=; path=/; max-age=0; SameSite=Strict; Secure';
+  document.cookie = 'nomados-refresh=; path=/; max-age=0; SameSite=Strict; Secure';
 
   // Redirect to login
   if (typeof window !== 'undefined') {

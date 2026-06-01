@@ -34,7 +34,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect to NATS: %v", err)
 	}
-	defer sub.Close()
 
 	// Subscribe to all event subjects
 	ctx := context.Background()
@@ -54,26 +53,31 @@ func main() {
 		WriteTimeout: 10 * time.Second,
 	}
 
-	// Graceful shutdown
+	// Start server in a goroutine.
 	go func() {
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-		sig := <-sigCh
-		logger.Info("received shutdown signal, draining connections", "signal", sig)
-
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		if err := srv.Shutdown(shutdownCtx); err != nil {
-			logger.Error("error shutting down HTTP server", "error", err)
+		logger.Info("observability service listening", "address", listenAddr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTP server error: %v", err)
 		}
-
-		sub.Close()
-		os.Exit(0)
 	}()
 
-	logger.Info("observability service listening", "address", listenAddr)
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("HTTP server error: %v", err)
+	// Wait for shutdown signal.
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-quit
+	log.Printf("received %s, shutting down...", sig)
+
+	// Shutdown with timeout (15s for slow operations).
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer shutdownCancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("error shutting down HTTP server: %v", err)
 	}
+
+	// Close resources explicitly.
+	log.Println("closing NATS subscription...")
+	sub.Close()
+
+	log.Println("shutdown complete")
 }

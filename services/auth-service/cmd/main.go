@@ -121,8 +121,8 @@ func main() {
 	// Mark as NOT_SERVING before stopping.
 	hs.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
 
-	// Shutdown with timeout.
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// Shutdown with timeout (15s for slow operations).
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer shutdownCancel()
 
 	// Stop accepting new requests with timeout enforcement.
@@ -143,6 +143,8 @@ func main() {
 	// Close resources explicitly.
 	log.Println("closing session service connection...")
 	sessionConn.Close()
+	log.Println("closing challenge store...")
+	challengeStore.Close()
 	log.Println("closing database connection...")
 	pool.Close()
 

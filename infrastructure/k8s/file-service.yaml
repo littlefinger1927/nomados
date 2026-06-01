@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: file-service
+  namespace: nomados
+  labels:
+    app.kubernetes.io/name: file-service
+    app.kubernetes.io/part-of: nomados-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: file-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: file-service
+    spec:
+      containers:
+        - name: file-service
+          image: nomados/file-service:latest
+          ports:
+            - containerPort: 50056
+              protocol: TCP
+          env:
+            - name: FILE_SERVICE_ADDR
+              valueFrom:
+                configMapKeyRef:
+                  name: nomados-config
+                  key: FILE_SERVICE_ADDR
+            - name: DATABASE_URL
+              value: "postgres://nomados:$(DATABASE_PASSWORD)@postgres:5432/nomados?sslmode=disable"
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nomados-secrets
+                  key: DATABASE_PASSWORD
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: nomados-secrets
+                  key: MINIO_SECRET_KEY
+          envFrom:
+            - configMapRef:
+                name: nomados-config
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "125m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 50056
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 50056
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: file-service
+  namespace: nomados
+  labels:
+    app.kubernetes.io/name: file-service
+    app.kubernetes.io/part-of: nomados-platform
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: file-service
+  ports:
+    - port: 50056
+      targetPort: 50056
+      protocol: TCP
+      name: grpc

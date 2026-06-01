@@ -53,8 +53,8 @@ build/
 out/
 *.bin
 
-# Proto generated
-packages/shared-types/gen/
+# Proto generated (committed for CI since no proto generation step in pipeline)
+# packages/shared-types/gen/
 
 # Debug
 __debug_bin*

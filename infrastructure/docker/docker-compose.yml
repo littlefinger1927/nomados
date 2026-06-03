@@ -142,13 +142,13 @@ services:
       - WORKSPACE_SERVICE_ADDR=:50053
       - DOCKER_ENABLED=true
       - WORKSPACE_IMAGE=chromium/chromium:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       postgres:
         condition: service_healthy
       nats:
         condition: service_healthy
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
 
   file-service:
     build:

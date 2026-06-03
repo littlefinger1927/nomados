@@ -99,10 +99,15 @@ func (s *AuthService) Register(ctx context.Context, username string, devicePubli
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	device, err := s.repo.CreateDevice(ctx, user.ID, devicePublicKey, deviceAttestation)
-	if err != nil {
-		s.logger.Error("failed to create device", "user_id", user.ID, "error", err)
-		return nil, fmt.Errorf("failed to create device: %w", err)
+	// Only create a device if a public key is provided (dev mode shortcut).
+	// In real WebAuthn flow, the device is created during VerifyRegistration.
+	var device *repository.Device
+	if len(devicePublicKey) > 0 {
+		device, err = s.repo.CreateDevice(ctx, user.ID, devicePublicKey, deviceAttestation)
+		if err != nil {
+			s.logger.Error("failed to create device", "user_id", user.ID, "error", err)
+			return nil, fmt.Errorf("failed to create device: %w", err)
+		}
 	}
 
 	// Generate a WebAuthn registration challenge

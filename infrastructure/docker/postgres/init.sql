@@ -18,7 +18,9 @@ CREATE TABLE devices (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     credential_id BYTEA,
     credential_public_key BYTEA,
-    sign_count BIGINT DEFAULT 0
+    sign_count BIGINT DEFAULT 0,
+    name VARCHAR(255) DEFAULT '',
+    aaguid BYTEA
 );
 
 CREATE TABLE sessions (

@@ -20,16 +20,12 @@ FROM alpine:3.19
 # Install Docker CLI for container management
 RUN apk --no-cache add ca-certificates tzdata docker-cli
 
-# Create non-root user
-RUN adduser -D -g '' appuser
-
+# Docker socket access required for container management
+# TODO: add appuser to docker group by matching host GID for production
 WORKDIR /app
 
 # Copy binary from builder
 COPY --from=builder /app/server .
-
-# Use non-root user
-USER appuser
 
 EXPOSE 50053
 

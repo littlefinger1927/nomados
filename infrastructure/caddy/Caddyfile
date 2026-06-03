@@ -1,12 +1,26 @@
-# NomadOS Local Development Caddyfile
-# TLS termination with self-signed certs for localhost
-# Reverse proxy to gateway-service on the Docker network
+# NomadOS Caddyfile
+# Serves the web-desktop frontend and proxies API requests to the gateway
 
 localhost {
-	reverse_proxy gateway-service:8080
+	# API routes go to the gRPC-gateway
+	handle /v1/* {
+		reverse_proxy gateway-service:8080
+	}
 
-	# Pass through request headers
-	request_header X-Request-ID "{http.request.header.X-Request-ID}"
+	# Health check endpoint
+	handle /health {
+		reverse_proxy gateway-service:8080
+	}
+
+	# gRPC-Web and gRPC Gateway reflection
+	handle /grpc.reflection.v1alpha.ServerReflection/* {
+		reverse_proxy gateway-service:8080
+	}
+
+	# Everything else serves the Next.js frontend
+	handle {
+		reverse_proxy web-desktop:3000
+	}
 
 	# Add forwarded headers so the gateway knows the original scheme
 	request_header X-Forwarded-For "{http.request.remote.host}"

@@ -160,7 +160,7 @@ services:
       - DATABASE_URL=postgres://nomados:${DATABASE_PASSWORD:-nomados_dev}@postgres:5432/nomados?sslmode=disable
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=nomados
-      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-nomados_dev_key}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-nomados_dev}
       - MINIO_BUCKET=nomados-files
       - MINIO_USE_SSL=false
       - FILE_SERVICE_ADDR=:50056

@@ -28,6 +28,6 @@ localhost {
 }
 
 # Redirect HTTP to HTTPS
-:http {
-	redir https://localhost{uri} permanent
+http://localhost {
+	redir https://localhost{uri}
 }

@@ -103,7 +103,10 @@ services:
     environment:
       - DATABASE_URL=postgres://nomados:${DATABASE_PASSWORD:-nomados_dev}@postgres:5432/nomados?sslmode=disable
       - AUTH_SERVICE_ADDR=:50051
-      - SESSION_SERVICE_ADDR=session-service:50052
+      - SESSION_SERVICE_CLIENT_ADDR=session-service:50052
+      - WEBAUTHN_RP_ID=${WEBAUTHN_RP_ID:-localhost}
+      - WEBAUTHN_ORIGIN=${WEBAUTHN_ORIGIN:-https://localhost}
+      - REDIS_URL=redis://redis:6379
     depends_on:
       postgres:
         condition: service_healthy
@@ -208,6 +211,7 @@ services:
     environment:
       - NATS_URL=nats://nats:4222
       - VAULT_SERVICE_ADDR=:50057
+      - SESSION_SERVICE_CLIENT_ADDR=session-service:50052
     depends_on:
       nats:
         condition: service_healthy
@@ -239,13 +243,13 @@ services:
       - "8080:8080"
     environment:
       - GATEWAY_ADDR=:8080
-      - AUTH_SERVICE_ADDR=auth-service:50051
-      - SESSION_SERVICE_ADDR=session-service:50052
-      - WORKSPACE_SERVICE_ADDR=workspace-orchestrator:50053
-      - BROWSER_SERVICE_ADDR=browser-manager:50054
-      - STREAMING_SERVICE_ADDR=streaming-service:50055
-      - FILE_SERVICE_ADDR=file-service:50056
-      - VAULT_SERVICE_ADDR=vault-service:50057
+      - AUTH_SERVICE_CLIENT_ADDR=auth-service:50051
+      - SESSION_SERVICE_CLIENT_ADDR=session-service:50052
+      - WORKSPACE_SERVICE_CLIENT_ADDR=workspace-orchestrator:50053
+      - BROWSER_SERVICE_CLIENT_ADDR=browser-manager:50054
+      - STREAMING_SERVICE_CLIENT_ADDR=streaming-service:50055
+      - FILE_SERVICE_CLIENT_ADDR=file-service:50056
+      - VAULT_SERVICE_CLIENT_ADDR=vault-service:50057
       - SIGNING_SECRET=${SIGNING_SECRET:-nomados-dev-secret}
       - RATE_LIMIT_RPS=100
       - RATE_LIMIT_BURST=200

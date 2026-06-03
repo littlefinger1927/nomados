@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
   transpilePackages: ['@nomados/ui-components'],
   // Set workspace root to suppress lockfile inference warning
   outputFileTracingRoot: path.join(__dirname, '../../'),
+  // Enable standalone output for smaller Docker images
+  output: 'standalone',
 };
 
 export default nextConfig;

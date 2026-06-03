@@ -19,20 +19,22 @@ RUN npm ci
 WORKDIR /workspace
 COPY apps/web-desktop/ ./apps/web-desktop/
 
-# Build the Next.js app
+# Build the Next.js app (standalone output enabled in next.config.ts)
 WORKDIR /workspace/apps/web-desktop
 RUN npm run build
 
-# Runtime stage - copy entire app with node_modules since no standalone output
-FROM node:20-alpine
+# Runtime stage - uses standalone output for minimal image
+FROM node:20-alpine AS runtime
 
 WORKDIR /app
 
 # Create non-root user
 RUN adduser -D -g '' appuser
 
-# Copy the entire built application
-COPY --from=builder /workspace/apps/web-desktop/ ./
+# Copy standalone output
+COPY --from=builder /workspace/apps/web-desktop/.next/standalone ./
+COPY --from=builder /workspace/apps/web-desktop/.next/static ./.next/static
+COPY --from=builder /workspace/apps/web-desktop/public ./public
 
 # Change ownership to appuser
 RUN chown -R appuser:appuser /app
@@ -42,4 +44,5 @@ USER appuser
 
 EXPOSE 3000
 
-CMD ["npm", "start"]
+ENV HOSTNAME="0.0.0.0"
+CMD ["node", "server.js"]

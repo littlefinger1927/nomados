@@ -2,6 +2,7 @@ package health
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"google.golang.org/grpc"
@@ -28,14 +29,17 @@ func NewChecker(backends []BackendConfig) *Checker {
 
 // Check verifies that downstream services are reachable by attempting
 // a gRPC health check on each one.
-// Returns "SERVING" if all downstream services are reachable, "NOT_SERVING" otherwise.
+// Returns "SERVING" if the gateway is operational. Individual backend failures
+// are logged as warnings but do not cause the gateway to report NOT_SERVING,
+// since the gateway can still route requests and return appropriate errors
+// for unavailable backends.
 func (c *Checker) Check(ctx context.Context) string {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	for _, backend := range c.backends {
 		if err := c.checkBackend(ctx, backend.Addr); err != nil {
-			return "NOT_SERVING"
+			log.Printf("WARNING: backend %s (%s) health check failed: %v", backend.Name, backend.Addr, err)
 		}
 	}
 

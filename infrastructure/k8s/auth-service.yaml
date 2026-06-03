@@ -28,11 +28,11 @@ spec:
                 configMapKeyRef:
                   name: nomados-config
                   key: AUTH_SERVICE_ADDR
-            - name: SESSION_SERVICE_ADDR
+            - name: SESSION_SERVICE_CLIENT_ADDR
               valueFrom:
                 configMapKeyRef:
                   name: nomados-config
-                  key: SESSION_SERVICE_ADDR
+                  key: SESSION_SERVICE_CLIENT_ADDR
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:

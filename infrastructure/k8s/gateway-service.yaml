@@ -28,19 +28,19 @@ spec:
                 configMapKeyRef:
                   name: nomados-config
                   key: GATEWAY_ADDR
-            - name: AUTH_SERVICE_ADDR
+            - name: AUTH_SERVICE_CLIENT_ADDR
               value: "auth-service:50051"
-            - name: SESSION_SERVICE_ADDR
+            - name: SESSION_SERVICE_CLIENT_ADDR
               value: "session-service:50052"
-            - name: WORKSPACE_SERVICE_ADDR
+            - name: WORKSPACE_SERVICE_CLIENT_ADDR
               value: "workspace-orchestrator:50053"
-            - name: BROWSER_SERVICE_ADDR
+            - name: BROWSER_SERVICE_CLIENT_ADDR
               value: "browser-manager:50054"
-            - name: STREAMING_SERVICE_ADDR
+            - name: STREAMING_SERVICE_CLIENT_ADDR
               value: "streaming-service:50055"
-            - name: FILE_SERVICE_ADDR
+            - name: FILE_SERVICE_CLIENT_ADDR
               value: "file-service:50056"
-            - name: VAULT_SERVICE_ADDR
+            - name: VAULT_SERVICE_CLIENT_ADDR
               value: "vault-service:50057"
             - name: SIGNING_SECRET
               valueFrom:

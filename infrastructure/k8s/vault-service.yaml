@@ -28,6 +28,11 @@ spec:
                 configMapKeyRef:
                   name: nomados-config
                   key: VAULT_SERVICE_ADDR
+            - name: SESSION_SERVICE_CLIENT_ADDR
+              valueFrom:
+                configMapKeyRef:
+                  name: nomados-config
+                  key: SESSION_SERVICE_CLIENT_ADDR
           envFrom:
             - configMapRef:
                 name: nomados-config

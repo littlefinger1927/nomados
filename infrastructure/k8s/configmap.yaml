@@ -27,16 +27,25 @@ data:
   MINIO_BUCKET: "nomados-files"
   MINIO_USE_SSL: "false"
 
-  # Service addresses
-  AUTH_SERVICE_ADDR: "auth-service:50051"
-  SESSION_SERVICE_ADDR: "session-service:50052"
-  WORKSPACE_SERVICE_ADDR: "workspace-orchestrator:50053"
-  BROWSER_MANAGER_ADDR: "browser-manager:50054"
-  STREAMING_SERVICE_ADDR: "streaming-service:50055"
-  FILE_SERVICE_ADDR: "file-service:50056"
-  VAULT_SERVICE_ADDR: "vault-service:50057"
+  # Service listen addresses (bind to all interfaces)
+  AUTH_SERVICE_ADDR: ":50051"
+  SESSION_SERVICE_ADDR: ":50052"
+  WORKSPACE_SERVICE_ADDR: ":50053"
+  BROWSER_MANAGER_ADDR: ":50054"
+  STREAMING_SERVICE_ADDR: ":50055"
+  FILE_SERVICE_ADDR: ":50056"
+  VAULT_SERVICE_ADDR: ":50057"
   OBSERVABILITY_ADDR: ":9090"
   GATEWAY_ADDR: ":8080"
+
+  # Service client addresses (for inter-service communication)
+  AUTH_SERVICE_CLIENT_ADDR: "auth-service:50051"
+  SESSION_SERVICE_CLIENT_ADDR: "session-service:50052"
+  WORKSPACE_SERVICE_CLIENT_ADDR: "workspace-orchestrator:50053"
+  BROWSER_SERVICE_CLIENT_ADDR: "browser-manager:50054"
+  STREAMING_SERVICE_CLIENT_ADDR: "streaming-service:50055"
+  FILE_SERVICE_CLIENT_ADDR: "file-service:50056"
+  VAULT_SERVICE_CLIENT_ADDR: "vault-service:50057"
 
   # Internal service hosts (for inter-service communication)
   AUTH_SERVICE_HOST: "auth-service"

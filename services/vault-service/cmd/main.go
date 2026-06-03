@@ -35,9 +35,12 @@ func main() {
 	}
 
 	// Session service address for token validation.
-	sessionAddr := os.Getenv("SESSION_SERVICE_ADDR")
+	sessionAddr := os.Getenv("SESSION_SERVICE_CLIENT_ADDR")
 	if sessionAddr == "" {
-		sessionAddr = "localhost:50052"
+		sessionAddr = os.Getenv("SESSION_SERVICE_ADDR")
+		if sessionAddr == "" {
+			sessionAddr = "localhost:50052"
+		}
 	}
 
 	// Initialize logger.

@@ -32,9 +32,12 @@ func main() {
 	if listenAddr == "" {
 		listenAddr = ":50051"
 	}
-	sessionAddr := os.Getenv("SESSION_SERVICE_ADDR")
+	sessionAddr := os.Getenv("SESSION_SERVICE_CLIENT_ADDR")
 	if sessionAddr == "" {
-		sessionAddr = "localhost:50052"
+		sessionAddr = os.Getenv("SESSION_SERVICE_ADDR")
+		if sessionAddr == "" {
+			sessionAddr = "localhost:50052"
+		}
 	}
 	redisURL := os.Getenv("REDIS_URL")
 

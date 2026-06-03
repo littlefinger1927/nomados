@@ -36,10 +36,7 @@ spec:
             - name: DATABASE_URL
               value: "postgres://nomados:$(DATABASE_PASSWORD)@postgres:5432/nomados?sslmode=disable"
             - name: DOCKER_ENABLED
-              valueFrom:
-                configMapKeyRef:
-                  name: nomados-config
-                  key: DOCKER_ENABLED
+              value: "false"
             - name: WORKSPACE_IMAGE
               valueFrom:
                 configMapKeyRef:
@@ -48,9 +45,6 @@ spec:
           envFrom:
             - configMapRef:
                 name: nomados-config
-          volumeMounts:
-            - name: docker-socket
-              mountPath: /var/run/docker.sock
           resources:
             requests:
               memory: "128Mi"
@@ -72,11 +66,6 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
-      volumes:
-        - name: docker-socket
-          hostPath:
-            path: /var/run/docker.sock
-            type: Socket
 ---
 apiVersion: v1
 kind: Service

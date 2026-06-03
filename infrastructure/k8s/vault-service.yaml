@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: vault-service
-          image: nomados/vault-service:latest
+          image: nomados/vault-service:dev
           ports:
             - containerPort: 50057
               protocol: TCP
@@ -39,16 +39,14 @@ spec:
               memory: "256Mi"
               cpu: "250m"
           livenessProbe:
-            httpGet:
-              path: /health
+            grpc:
               port: 50057
             initialDelaySeconds: 10
             periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 3
           readinessProbe:
-            httpGet:
-              path: /health
+            grpc:
               port: 50057
             initialDelaySeconds: 5
             periodSeconds: 10

@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: file-service
-          image: nomados/file-service:latest
+          image: nomados/file-service:dev
           ports:
             - containerPort: 50056
               protocol: TCP
@@ -28,13 +28,13 @@ spec:
                 configMapKeyRef:
                   name: nomados-config
                   key: FILE_SERVICE_ADDR
-            - name: DATABASE_URL
-              value: "postgres://nomados:$(DATABASE_PASSWORD)@postgres:5432/nomados?sslmode=disable"
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: nomados-secrets
                   key: DATABASE_PASSWORD
+            - name: DATABASE_URL
+              value: "postgres://nomados:$(DATABASE_PASSWORD)@postgres:5432/nomados?sslmode=disable"
             - name: MINIO_SECRET_KEY
               valueFrom:
                 secretKeyRef:
@@ -51,16 +51,14 @@ spec:
               memory: "256Mi"
               cpu: "250m"
           livenessProbe:
-            httpGet:
-              path: /health
+            grpc:
               port: 50056
             initialDelaySeconds: 10
             periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 3
           readinessProbe:
-            httpGet:
-              path: /health
+            grpc:
               port: 50056
             initialDelaySeconds: 5
             periodSeconds: 10

@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: observability
-          image: nomados/observability:latest
+          image: nomados/observability:dev
           ports:
             - containerPort: 9090
               protocol: TCP

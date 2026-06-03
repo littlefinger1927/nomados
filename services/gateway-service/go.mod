@@ -6,6 +6,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0
 	github.com/nomados/nomados/packages/auth-sdk v0.0.0
+	github.com/nomados/nomados/packages/logging v0.0.0
 	github.com/nomados/nomados/packages/shared-types v0.0.0
 	golang.org/x/time v0.15.0
 	google.golang.org/grpc v1.81.1
@@ -23,5 +24,6 @@ require (
 
 replace (
 	github.com/nomados/nomados/packages/auth-sdk => ../../packages/auth-sdk
+	github.com/nomados/nomados/packages/logging => ../../packages/logging
 	github.com/nomados/nomados/packages/shared-types => ../../packages/shared-types
 )

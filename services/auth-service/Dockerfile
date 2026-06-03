@@ -1,21 +1,19 @@
 # Build stage
 FROM golang:1.26-alpine AS builder
 
-WORKDIR /workspace
+WORKDIR /app
 
-# Copy workspace configuration
-COPY go.work go.work.sum ./
+# Copy shared packages first (referenced by go.mod replace directives)
+COPY packages/shared-types/ /app/packages/shared-types/
+COPY packages/logging/ /app/packages/logging/
+COPY packages/auth-sdk/ /app/packages/auth-sdk/
 
-# Copy all packages that auth-service depends on
-COPY packages/shared-types/ ./packages/shared-types/
-COPY packages/logging/ ./packages/logging/
-COPY packages/auth-sdk/ ./packages/auth-sdk/
+# Copy service source (including go.mod and go.sum)
+COPY services/auth-service/ /app/services/auth-service/
 
-# Copy service source
-COPY services/auth-service/ ./services/auth-service/
-
-# Build the binary
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server ./services/auth-service/cmd/main.go
+# Build from the service directory where go.mod lives
+WORKDIR /app/services/auth-service
+RUN GOWORK=off CGO_ENABLED=0 GOOS=linux go build -o /app/server ./cmd/main.go
 
 # Runtime stage
 FROM alpine:3.19

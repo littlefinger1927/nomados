@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: web-desktop
-          image: nomados/web-desktop:latest
+          image: nomados/web-desktop:dev
           ports:
             - containerPort: 3000
               protocol: TCP

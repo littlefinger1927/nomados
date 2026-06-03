@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: workspace-orchestrator
-          image: nomados/workspace-orchestrator:latest
+          image: nomados/workspace-orchestrator:dev
           ports:
             - containerPort: 50053
               protocol: TCP
@@ -28,13 +28,13 @@ spec:
                 configMapKeyRef:
                   name: nomados-config
                   key: WORKSPACE_SERVICE_ADDR
-            - name: DATABASE_URL
-              value: "postgres://nomados:$(DATABASE_PASSWORD)@postgres:5432/nomados?sslmode=disable"
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: nomados-secrets
                   key: DATABASE_PASSWORD
+            - name: DATABASE_URL
+              value: "postgres://nomados:$(DATABASE_PASSWORD)@postgres:5432/nomados?sslmode=disable"
             - name: DOCKER_ENABLED
               valueFrom:
                 configMapKeyRef:
@@ -59,16 +59,14 @@ spec:
               memory: "256Mi"
               cpu: "250m"
           livenessProbe:
-            httpGet:
-              path: /health
+            grpc:
               port: 50053
             initialDelaySeconds: 10
             periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 3
           readinessProbe:
-            httpGet:
-              path: /health
+            grpc:
               port: 50053
             initialDelaySeconds: 5
             periodSeconds: 10

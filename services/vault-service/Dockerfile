@@ -1,20 +1,19 @@
 # Build stage
 FROM golang:1.26-alpine AS builder
 
-WORKDIR /workspace
+WORKDIR /app
 
-# Copy workspace configuration
-COPY go.work go.work.sum ./
+# Copy shared packages first (referenced by go.mod replace directives)
+COPY packages/shared-types/ /app/packages/shared-types/
+COPY packages/logging/ /app/packages/logging/
 
-# Copy all packages that vault-service depends on
-COPY packages/shared-types/ ./packages/shared-types/
-COPY packages/logging/ ./packages/logging/
+# Copy service source (including go.mod and go.sum)
+COPY services/vault-service/ /app/services/vault-service/
 
-# Copy service source
-COPY services/vault-service/ ./services/vault-service/
-
-# Build the binary
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server ./services/vault-service/cmd/main.go
+# Build from the service directory where go.mod lives
+WORKDIR /app/services/vault-service
+RUN GOWORK=off go mod download
+RUN GOWORK=off CGO_ENABLED=0 GOOS=linux go build -o /app/server ./cmd/main.go
 
 # Runtime stage
 FROM alpine:3.19

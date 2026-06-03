@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: browser-manager
-          image: nomados/browser-manager:latest
+          image: nomados/browser-manager:dev
           ports:
             - containerPort: 50054
               protocol: TCP
@@ -49,16 +49,14 @@ spec:
               memory: "256Mi"
               cpu: "250m"
           livenessProbe:
-            httpGet:
-              path: /health
+            grpc:
               port: 50054
             initialDelaySeconds: 10
             periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 3
           readinessProbe:
-            httpGet:
-              path: /health
+            grpc:
               port: 50054
             initialDelaySeconds: 5
             periodSeconds: 10

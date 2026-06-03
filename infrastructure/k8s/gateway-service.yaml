@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: gateway-service
-          image: nomados/gateway-service:latest
+          image: nomados/gateway-service:dev
           ports:
             - containerPort: 8080
               protocol: TCP

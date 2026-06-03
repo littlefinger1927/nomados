@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: session-service
-          image: nomados/session-service:latest
+          image: nomados/session-service:dev
           ports:
             - containerPort: 50052
               protocol: TCP
@@ -28,13 +28,13 @@ spec:
                 configMapKeyRef:
                   name: nomados-config
                   key: SESSION_SERVICE_ADDR
-            - name: DATABASE_URL
-              value: "postgres://nomados:$(DATABASE_PASSWORD)@postgres:5432/nomados?sslmode=disable"
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: nomados-secrets
                   key: DATABASE_PASSWORD
+            - name: DATABASE_URL
+              value: "postgres://nomados:$(DATABASE_PASSWORD)@postgres:5432/nomados?sslmode=disable"
             - name: SIGNING_SECRET
               valueFrom:
                 secretKeyRef:
@@ -51,16 +51,14 @@ spec:
               memory: "256Mi"
               cpu: "250m"
           livenessProbe:
-            httpGet:
-              path: /health
+            grpc:
               port: 50052
             initialDelaySeconds: 10
             periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 3
           readinessProbe:
-            httpGet:
-              path: /health
+            grpc:
               port: 50052
             initialDelaySeconds: 5
             periodSeconds: 10

@@ -1,19 +1,18 @@
 # Build stage
 FROM golang:1.26-alpine AS builder
 
-WORKDIR /workspace
+WORKDIR /app
 
-# Copy workspace configuration
-COPY go.work go.work.sum ./
+# Copy shared packages first (referenced by go.mod replace directives)
+COPY packages/logging/ /app/packages/logging/
 
-# Copy all packages that browser-manager depends on
-COPY packages/logging/ ./packages/logging/
+# Copy service source (including go.mod and go.sum)
+COPY services/browser-manager/ /app/services/browser-manager/
 
-# Copy service source
-COPY services/browser-manager/ ./services/browser-manager/
-
-# Build the binary
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server ./services/browser-manager/cmd/main.go
+# Build from the service directory where go.mod lives
+WORKDIR /app/services/browser-manager
+RUN GOWORK=off go mod download
+RUN GOWORK=off CGO_ENABLED=0 GOOS=linux go build -o /app/server ./cmd/main.go
 
 # Runtime stage
 FROM alpine:3.19
